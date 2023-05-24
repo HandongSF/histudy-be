@@ -6,11 +6,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
 
     @Id
@@ -36,6 +37,12 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<Participates> participates;
 
+    @OneToMany(mappedBy = "sent", cascade = CascadeType.ALL)
+    private List<Friendship> sentRequests = new ArrayList<>();
+
+    @OneToMany(mappedBy = "received", cascade = CascadeType.ALL)
+    private List<Friendship> receivedRequests = new ArrayList<>();
+
     @Builder
     public User(String id, String sid, String email, String name, String accessToken, Role role) {
         this.id = id;
@@ -49,5 +56,11 @@ public class User {
     public void belongTo(Team team) {
         this.team = team;
         team.getUsers().add(this);
+    }
+
+    public void add(User user) {
+        Friendship friendship = new Friendship(this, user);
+        this.sentRequests.add(friendship);
+        user.receivedRequests.add(friendship);
     }
 }
