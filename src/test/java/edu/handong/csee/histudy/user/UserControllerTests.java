@@ -65,7 +65,7 @@ public class UserControllerTests {
 
         // when
         MvcResult mvcResult = mockMvc
-                .perform(post("/api/user/buddy")
+                .perform(post("/api/users/me/friends")
                         .header(HttpHeaders.AUTHORIZATION, "access_token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(content))
