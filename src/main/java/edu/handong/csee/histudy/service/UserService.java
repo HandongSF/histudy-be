@@ -12,11 +12,11 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class UserService {
 
     private final UserRepository userRepository;
 
-    @Transactional
     public List<Friendship> sendRequest(User sender, BuddyForm form) {
         userRepository
                 .findAllById(form.getBuddies())
@@ -25,9 +25,26 @@ public class UserService {
         return sender.getSentRequests();
     }
 
+    @Transactional(readOnly = true)
     public User token2User(String accessToken) {
         return userRepository
                 .findUserByAccessToken(accessToken)
                 .orElseThrow();
+    }
+
+    public void acceptRequest(User user, String sid) {
+        user.getReceivedRequests()
+                .stream()
+                .filter(friendship -> friendship.getSent().getSid().equals(sid))
+                .findAny()
+                .ifPresent(Friendship::accept);
+    }
+
+    public void declineRequest(User user, String sid) {
+        user.getReceivedRequests()
+                .stream()
+                .filter(friendship -> friendship.getSent().getSid().equals(sid))
+                .findAny()
+                .ifPresent(Friendship::decline);
     }
 }

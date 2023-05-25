@@ -28,4 +28,17 @@ public class Friendship {
         this.received = received;
         this.status = FriendshipStatus.PENDING;
     }
+
+    public void accept() {
+        if (this.status == FriendshipStatus.PENDING) {
+            this.status = FriendshipStatus.ACCEPTED;
+        }
+    }
+
+    public void decline() {
+        if (this.status == FriendshipStatus.PENDING) {
+            sent.getSentRequests().remove(this);
+            received.getReceivedRequests().remove(this);
+        }
+    }
 }
