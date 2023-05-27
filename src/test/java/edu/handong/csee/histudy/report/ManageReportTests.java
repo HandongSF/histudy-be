@@ -12,8 +12,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Transactional
 @ActiveProfiles("dev")
+@Transactional
 public class ManageReportTests {
 
     @DisplayName("보고서 작성시 참여한 인원을 선택할 수 있다.")

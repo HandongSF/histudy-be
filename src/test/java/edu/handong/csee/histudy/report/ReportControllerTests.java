@@ -6,17 +6,23 @@ import edu.handong.csee.histudy.controller.form.ReportForm;
 import edu.handong.csee.histudy.domain.Team;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.dto.ReportDto;
+import edu.handong.csee.histudy.interceptor.AuthenticationInterceptor;
 import edu.handong.csee.histudy.repository.ReportRepository;
 import edu.handong.csee.histudy.repository.UserRepository;
+import edu.handong.csee.histudy.service.JwtService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.MockBeans;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -29,20 +35,40 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ActiveProfiles("dev")
+@MockBeans({
+        @MockBean(ReportRepository.class),
+        @MockBean(UserRepository.class),
+        @MockBean(JwtService.class),
+        @MockBean(AuthenticationInterceptor.class)})
 @WebMvcTest(ReportController.class)
 public class ReportControllerTests {
 
-    @Autowired
     MockMvc mvc;
 
     @Autowired
     ObjectMapper mapper;
 
-    @MockBean
+    @Autowired
+    UserRepository userRepository;
+
+    @Autowired
     ReportRepository reportRepository;
 
-    @MockBean
-    UserRepository userRepository;
+    @Autowired
+    AuthenticationInterceptor interceptor;
+
+    @Autowired
+    ReportController reportController;
+
+    @BeforeEach
+    void init() throws Exception {
+        mvc = MockMvcBuilders
+                .standaloneSetup(reportController)
+                .addInterceptors(interceptor)
+                .build();
+        when(interceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
 
     @DisplayName("스터디 보고서를 생성한다")
     @Test

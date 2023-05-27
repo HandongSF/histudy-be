@@ -5,11 +5,13 @@ import edu.handong.csee.histudy.domain.FriendshipStatus;
 import edu.handong.csee.histudy.domain.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 
+@ActiveProfiles("dev")
 @Transactional
 public class FriendshipTests {
 

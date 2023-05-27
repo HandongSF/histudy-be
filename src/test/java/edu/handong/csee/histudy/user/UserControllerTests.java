@@ -7,16 +7,22 @@ import edu.handong.csee.histudy.domain.Friendship;
 import edu.handong.csee.histudy.domain.FriendshipStatus;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.dto.FriendshipDto;
+import edu.handong.csee.histudy.interceptor.AuthenticationInterceptor;
+import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.UserService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.MockBeans;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
@@ -29,17 +35,37 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ActiveProfiles("dev")
+@MockBeans({
+        @MockBean(UserService.class),
+        @MockBean(JwtService.class),
+        @MockBean(AuthenticationInterceptor.class)
+})
 @WebMvcTest(UserController.class)
 public class UserControllerTests {
 
-    @Autowired
     MockMvc mockMvc;
 
     @Autowired
     ObjectMapper mapper;
 
-    @MockBean
+    @Autowired
     UserService userService;
+
+    @Autowired
+    UserController userController;
+
+    @Autowired
+    AuthenticationInterceptor interceptor;
+
+    @BeforeEach
+    void init() throws Exception {
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(userController)
+                .addInterceptors(interceptor)
+                .build();
+        when(interceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
 
     @DisplayName("스터디 친구를 등록한다")
     @Test
