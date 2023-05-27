@@ -1,15 +1,18 @@
 package edu.handong.csee.histudy.dto;
 
 import edu.handong.csee.histudy.domain.Report;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 public class ReportDto {
 
-    @AllArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
     @Getter
+    @NoArgsConstructor(access = AccessLevel.PROTECTED)
     public static class Response {
 
         public Response(Report entity) {

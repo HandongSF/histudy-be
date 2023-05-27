@@ -1,6 +1,5 @@
 package edu.handong.csee.histudy.domain;
 
-import jakarta.annotation.Nonnull;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -20,13 +19,9 @@ public class Report {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Nonnull
     private String title;
     private String content;
-    @Nonnull
     private LocalTime startTime;
-    @Nonnull
     private LocalTime endTime;
     private long totalMinutes;
     @Embedded
