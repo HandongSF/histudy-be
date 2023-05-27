@@ -18,17 +18,17 @@ public class Course {
     private String name;
     @CsvBindByName
     private String professor;
-    @CsvBindByName
-    private int year;
+    @CsvBindByName(column = "course")
+    private int courseYear;
     @CsvBindByName
     private int semester;
 
     @Builder
-    public Course(String name, String code, String professor, int year, int semester) {
+    public Course(String name, String code, String professor, int courseYear, int semester) {
         this.name = name;
         this.code = code;
         this.professor = professor;
-        this.year = year;
+        this.courseYear = courseYear;
         this.semester = semester;
     }
 }
