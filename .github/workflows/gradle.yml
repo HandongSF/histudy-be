@@ -42,5 +42,11 @@ jobs:
       - name: Trigger Deploy Script on Remote Server
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -t rsa ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
-          ssh -i ${{ secrets.SSH_KEY }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "./deploy.sh"
+          echo "$SSH_KEY" > ~/.ssh/key.pem
+          ssh-keyscan -t rsa "$SSH_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/key.pem $SSH_USER@$SSH_HOST "./deploy.sh"
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+      
