@@ -40,9 +40,12 @@ jobs:
         run: ./gradlew test
 
       - name: Trigger Deploy Script on Remote Server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: ./deploy.sh
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/key.pem
+          sudo chmod 600 ~/.ssh/key.pem
+          ssh-keyscan $HOST > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/key.pem $USER@$HOST "./deploy.sh"
+        env:
+          HOST: ${{ secrets.SSH_HOST }}
+          USER: ${{ secrets.SSH_USER }}
