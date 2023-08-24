@@ -41,6 +41,6 @@ jobs:
 
       - name: Trigger Deploy Script on Remote Server
         run: |
-          mkdir ~/.ssh
+          mkdir -p ~/.ssh
           ssh-keyscan -t rsa ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
           ssh -i ${{ secrets.SSH_KEY }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "./deploy.sh"
