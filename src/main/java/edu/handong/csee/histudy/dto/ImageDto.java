@@ -1,7 +1,6 @@
 package edu.handong.csee.histudy.dto;
 
 import edu.handong.csee.histudy.domain.ReportImage;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,9 +16,7 @@ public class ImageDto {
     this.url = entity.getPath();
   }
 
-  @Schema(description = "Image ID", example = "1", type = "number")
   private long id;
 
-  @Schema(description = "Image URL", example = "/path/to/image.png")
   private String url;
 }

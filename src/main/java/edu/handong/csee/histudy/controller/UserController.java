@@ -10,11 +10,6 @@ import edu.handong.csee.histudy.jwt.JwtPair;
 import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.UserService;
 import io.jsonwebtoken.Claims;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -24,7 +19,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "일반 사용자 API")
 @RestController
 @RequiredArgsConstructor
 public class UserController {
@@ -32,7 +26,6 @@ public class UserController {
   private final UserService userService;
   private final JwtService jwtService;
 
-  @Operation(summary = "회원가입")
   @PostMapping("/api/users")
   public ResponseEntity<UserDto.UserLogin> createUser(@RequestBody UserForm userForm) {
     userService.signUp(userForm);
@@ -56,13 +49,11 @@ public class UserController {
    * @see #searchUserWithMasking(Optional, Optional)
    * @deprecated 마스킹된 유저 정보를 반환하는 v2 API를 사용할 것
    */
-  @Operation(summary = "유저 검색")
-  @SecurityRequirement(name = "USER")
   @Deprecated
   @GetMapping("/api/users")
   public ResponseEntity<UserDto> searchUser(
-      @Parameter(allowEmptyValue = true) @RequestParam(name = "search") Optional<String> keyword,
-      @Parameter(hidden = true) @RequestHeader(HttpHeaders.AUTHORIZATION) Optional<String> header) {
+      @RequestParam(name = "search") Optional<String> keyword,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) Optional<String> header) {
     String token = jwtService.extractToken(header);
     Claims claims = jwtService.validate(token);
     String email = claims.getSubject();
@@ -87,12 +78,10 @@ public class UserController {
    * @param header 액세스 토큰
    * @return 유저 목록
    */
-  @Operation(summary = "유저 검색")
-  @SecurityRequirement(name = "USER")
   @GetMapping("/api/v2/users")
   public ResponseEntity<UserDto> searchUserWithMasking(
-      @Parameter(allowEmptyValue = true) @RequestParam(name = "search") Optional<String> keyword,
-      @Parameter(hidden = true) @RequestHeader(HttpHeaders.AUTHORIZATION) Optional<String> header) {
+      @RequestParam(name = "search") Optional<String> keyword,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) Optional<String> header) {
     String token = jwtService.extractToken(header);
     Claims claims = jwtService.validate(token);
     String email = claims.getSubject();
@@ -107,12 +96,6 @@ public class UserController {
     return ResponseEntity.ok(new UserDto(users));
   }
 
-  @Operation(summary = "내 정보 조회")
-  @SecurityRequirements({
-    @SecurityRequirement(name = "USER"),
-    @SecurityRequirement(name = "MEMBER"),
-    @SecurityRequirement(name = "ADMIN")
-  })
   @GetMapping("/api/users/me")
   public ResponseEntity<UserDto.UserMe> getMyInfo(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.values())) {
@@ -130,8 +113,6 @@ public class UserController {
    * @see #getMyApplicationFormWithMasking(Claims)
    * @deprecated 마스킹된 유저 정보를 반환하는 v2 API를 사용할 것
    */
-  @Operation(summary = "스터디 그룹 신청 정보 조회")
-  @SecurityRequirement(name = "USER")
   @Deprecated
   @GetMapping("/api/users/me/forms")
   public ResponseEntity<ApplyFormDto> getMyApplicationForm(@RequestAttribute Claims claims) {
@@ -154,8 +135,6 @@ public class UserController {
    * @param claims 토큰 페이로드
    * @return 스터디 신청 내역
    */
-  @Operation(summary = "스터디 그룹 신청 정보 조회")
-  @SecurityRequirement(name = "USER")
   @GetMapping("/api/v2/users/me/forms")
   public ResponseEntity<ApplyFormDto> getMyApplicationFormWithMasking(
       @RequestAttribute Claims claims) {

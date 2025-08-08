@@ -17,6 +17,7 @@ public class AcademicTerm extends BaseTime {
   private Integer academicYear;
 
   @Enumerated(EnumType.STRING)
+  @Builder.Default
   private TermType semester = TermType.NONE;
 
   @Builder.Default private Boolean isCurrent = false;

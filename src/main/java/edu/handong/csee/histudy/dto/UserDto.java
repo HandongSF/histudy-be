@@ -5,7 +5,6 @@ import edu.handong.csee.histudy.domain.StudyApplicant;
 import edu.handong.csee.histudy.domain.StudyPartnerRequest;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.jwt.JwtPair;
-import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -16,7 +15,6 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class UserDto {
 
-  @Schema(description = "List of user", type = "array")
   private List<? extends UserMatching> users;
 
   @Getter
@@ -24,13 +22,10 @@ public class UserDto {
   @Deprecated
   public static class UserMatching {
 
-    @Schema(description = "User name", example = "John Doe")
     private String name;
 
-    @Schema(description = "User student ID", example = "211234567")
     private String sid;
 
-    @Schema(description = "User email", example = "jd@example.com")
     private String email;
 
     public UserMatching(User user) {
@@ -44,13 +39,10 @@ public class UserDto {
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   public static class UserMatchingWithMasking extends UserMatching {
 
-    @Schema(description = "User ID", example = "1")
     private Long id;
 
-    @Schema(description = "User name", example = "John Doe")
     private String name;
 
-    @Schema(description = "User student ID", example = "223****2")
     private String sid;
 
     public UserMatchingWithMasking(User user) {
@@ -65,16 +57,12 @@ public class UserDto {
   @AllArgsConstructor(access = AccessLevel.PRIVATE)
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   public static class UserLogin {
-    @Schema(description = "Registration status", example = "true", type = "boolean")
     private Boolean isRegistered;
 
-    @Schema(description = "Token type", example = "Bearer ")
     private String tokenType;
 
-    @Schema(description = "Token pairs", type = "object")
     private JwtPair tokens;
 
-    @Schema(description = "Role", example = "USER")
     private String role;
   }
 
@@ -84,25 +72,18 @@ public class UserDto {
   @AllArgsConstructor(access = AccessLevel.PRIVATE)
   public static class UserInfo {
 
-    @Schema(description = "User ID", example = "1", type = "number")
     private Long id;
 
-    @Schema(description = "User name", example = "John Doe")
     private String name;
 
-    @Schema(description = "User student ID", example = "211234567")
     private String sid;
 
-    @Schema(description = "Group tag", example = "112")
     private Integer group;
 
-    @Schema(description = "User email", example = "abc@example.ac.kr")
     private String email;
 
-    @Schema(description = "list of friend added", type = "array")
     private List<UserBasic> friends;
 
-    @Schema(description = "list of course added", type = "array")
     private List<CourseDto.BasicCourseInfo> courses;
 
     public UserInfo(User user, StudyApplicant applicant) {
@@ -145,13 +126,10 @@ public class UserDto {
   @AllArgsConstructor(access = AccessLevel.PRIVATE)
   public static class UserBasic {
 
-    @Schema(description = "User ID", example = "1", type = "number")
     private Long id;
 
-    @Schema(description = "User name", example = "John Doe")
     private String name;
 
-    @Schema(description = "User student ID", example = "211234567")
     private String sid;
 
     public UserBasic(User user) {
@@ -165,13 +143,10 @@ public class UserDto {
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   public static class UserBasicWithMasking extends UserBasic {
 
-    @Schema(description = "User ID", example = "1")
     private Long id;
 
-    @Schema(description = "User name", example = "John Doe")
     private String name;
 
-    @Schema(description = "User student ID", example = "223****2")
     private String sid;
 
     public UserBasicWithMasking(User user) {
@@ -184,16 +159,12 @@ public class UserDto {
   @Getter
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   public static class UserMe {
-    @Schema(description = "User ID", example = "1", type = "number")
     private Long id;
 
-    @Schema(description = "User name", example = "John Doe")
     private String name;
 
-    @Schema(description = "User student ID", example = "211234567")
     private String sid;
 
-    @Schema(description = "User email", example = "user@test.com")
     private String email;
 
     public UserMe(User user) {
@@ -207,19 +178,14 @@ public class UserDto {
   @Getter
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   public static class UserMeWithMasking extends UserMe {
-    @Schema(description = "User ID", example = "1", type = "number")
     private Long id;
 
-    @Schema(description = "User name", example = "John Doe")
     private String name;
 
-    @Schema(description = "User student ID", example = "223****4")
     private String sid;
 
-    @Schema(description = "User email", example = "user@test.com")
     private String email;
 
-    @Schema(description = "Group tag", example = "112")
     private Integer tag;
 
     public UserMeWithMasking(User user, int tag) {
@@ -237,16 +203,12 @@ public class UserDto {
   @AllArgsConstructor
   public static class UserEdit {
 
-    @Schema(description = "User ID")
     private Long id;
 
-    @Schema(description = "Group tag", example = "112")
     private Integer team;
 
-    @Schema(description = "User name", example = "John Doe")
     private String name;
 
-    @Schema(description = "User student ID", example = "21800012")
     private String sid;
   }
 }

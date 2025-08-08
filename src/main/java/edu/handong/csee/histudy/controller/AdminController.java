@@ -9,18 +9,12 @@ import edu.handong.csee.histudy.exception.ForbiddenException;
 import edu.handong.csee.histudy.service.TeamService;
 import edu.handong.csee.histudy.service.UserService;
 import io.jsonwebtoken.Claims;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "관리자 API")
-@SecurityRequirement(name = "ADMIN")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin")
@@ -28,7 +22,6 @@ public class AdminController {
   private final TeamService teamService;
   private final UserService userService;
 
-  @Operation(summary = "그룹별 활동 조회")
   @GetMapping(value = "/manageGroup")
   public ResponseEntity<List<TeamDto>> getTeams(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
@@ -39,7 +32,6 @@ public class AdminController {
   }
 
   @Deprecated
-  @Operation(summary = "그룹 삭제")
   @DeleteMapping("/group")
   public ResponseEntity<Integer> deleteTeam(
       @RequestBody TeamIdDto dto, @RequestAttribute Claims claims) {
@@ -49,11 +41,9 @@ public class AdminController {
     throw new ForbiddenException();
   }
 
-  @Operation(summary = "특정 그룹 보고서 조회")
   @GetMapping("/groupReport/{id}")
   public ResponseEntity<TeamReportDto> getTeamReports(
-      @Parameter(description = "그룹 아이디", required = true) @PathVariable(name = "id") long id,
-      @RequestAttribute Claims claims) {
+      @PathVariable(name = "id") long id, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
       TeamReportDto res = teamService.getTeamReports(id, claims.getSubject());
       return ResponseEntity.ok(res);
@@ -69,7 +59,6 @@ public class AdminController {
    * @param claims 토큰 페이로드
    * @return 스터디 신청한 유저 목록
    */
-  @Operation(summary = "그룹 배정 여부와 관계 없이 스터디 신청한 유저 목록 조회")
   @GetMapping("/allUsers")
   public ResponseEntity<List<UserDto.UserInfo>> getAppliedUsers(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
@@ -78,7 +67,6 @@ public class AdminController {
     throw new ForbiddenException();
   }
 
-  @Operation(summary = "그룹 매칭")
   @PostMapping("/team-match")
   public ResponseEntity<Void> matchTeam(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
@@ -96,7 +84,6 @@ public class AdminController {
    * @param claims 토큰 페이로드
    * @return 그룹 미배정 학생 목록
    */
-  @Operation(summary = "매칭되지 않은 유저 목록 조회")
   @GetMapping("/unmatched-users")
   public ResponseEntity<List<UserDto.UserInfo>> getUnmatchedUsers(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
@@ -105,7 +92,6 @@ public class AdminController {
     throw new ForbiddenException();
   }
 
-  @Operation(summary = "특정 유저 지원폼 삭제")
   @DeleteMapping("/form")
   public void deleteForm(@RequestParam String sid, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
@@ -115,7 +101,6 @@ public class AdminController {
     throw new ForbiddenException();
   }
 
-  @Operation(summary = "유저 정보 수정")
   @PostMapping("/edit-user")
   public void editUser(@RequestBody UserDto.UserEdit form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
@@ -133,7 +118,6 @@ public class AdminController {
    * @param claims 토큰 페이로드
    * @return 스터디 신청했으나 그룹이 배정되지 않은 유저 목록
    */
-  @Operation(summary = "스터디를 신청했으나 그룹이 배정되지 않은 유저 목록 조회")
   @GetMapping("/users/unassigned")
   public ResponseEntity<List<UserDto.UserInfo>> unassignedUser(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {

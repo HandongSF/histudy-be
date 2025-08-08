@@ -1,12 +1,10 @@
 package edu.handong.csee.histudy.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.List;
 
 @Getter
 @Setter
@@ -14,19 +12,14 @@ import java.util.List;
 @AllArgsConstructor
 public class TeamReportDto {
 
-    @Schema(description = "Team ID", example = "1", type = "number")
     @Deprecated
     private long group;
 
-    @Schema(description = "Team tag number", example = "1")
     private Integer tag;
 
-    @Schema(description = "Team members", type = "array")
     private List<UserDto.UserBasic> members;
 
-    @Schema(description = "Total time studied", type = "number", example = "300")
     private long totalTime;
 
-    @Schema(description = "Reports information", type = "array", example = "120")
     List<ReportDto.ReportBasic> reports;
 }

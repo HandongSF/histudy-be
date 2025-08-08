@@ -10,15 +10,11 @@ import edu.handong.csee.histudy.jwt.TokenInfo;
 import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.UserService;
 import io.jsonwebtoken.Claims;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-
-@Tag(name = "인증 API")
 @CrossOrigin(
         origins = "${custom.origin.allowed}",
         methods = {
@@ -37,7 +33,6 @@ public class AuthController {
     private final UserService userService;
     private final JwtService jwtService;
 
-    @Operation(summary = "로그인")
     @GetMapping("/login")
     public ResponseEntity<UserDto.UserLogin> login(@RequestParam("sub") Optional<String> subOr) {
         User user = userService.getUser(subOr);
@@ -52,7 +47,6 @@ public class AuthController {
                         .build());
     }
 
-    @Operation(summary = "토큰 재발급")
     @PostMapping("/token")
     public ResponseEntity<TokenInfo> issueAccessToken(@RequestBody TokenForm tokenForm) {
         String refreshToken = Optional.ofNullable(tokenForm.getRefreshToken())

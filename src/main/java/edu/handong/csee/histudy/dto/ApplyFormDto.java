@@ -1,9 +1,8 @@
 package edu.handong.csee.histudy.dto;
 
-import edu.handong.csee.histudy.domain.StudyApplicant;
 import edu.handong.csee.histudy.domain.PreferredCourse;
+import edu.handong.csee.histudy.domain.StudyApplicant;
 import edu.handong.csee.histudy.domain.StudyPartnerRequest;
-import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Comparator;
 import java.util.List;
 import lombok.AccessLevel;
@@ -16,10 +15,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ApplyFormDto {
 
-  @Schema(description = "List of friend added to apply form", type = "array")
   private List<? extends UserDto.UserBasic> friends;
 
-  @Schema(description = "List of course added to apply form", type = "array")
   private List<CourseDto.CourseInfo> courses;
 
   @Deprecated

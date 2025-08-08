@@ -9,9 +9,6 @@ import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.ForbiddenException;
 import edu.handong.csee.histudy.service.UserService;
 import io.jsonwebtoken.Claims;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,8 +17,6 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "스터디 신청 API")
-@SecurityRequirement(name = "USER")
 @RestController
 @RequiredArgsConstructor
 public class ApplyFormController {
@@ -37,7 +32,6 @@ public class ApplyFormController {
    * @see #applyForStudy(ApplyFormV2, Claims)
    * @deprecated 신청한 학생 목록을 보낼 때 더 이상 학번 정보를 보낼 수 없기 때문에 사용하지 않음
    */
-  @Operation(summary = "스터디 신청")
   @Deprecated
   @PostMapping("/api/forms")
   public ResponseEntity<ApplyFormDto> applyForStudy(
@@ -57,7 +51,6 @@ public class ApplyFormController {
    * @param claims 토큰 페이로드
    * @return 신청 내역
    */
-  @Operation(summary = "스터디 신청")
   @PostMapping("/api/v2/forms")
   public ResponseEntity<ApplyFormDto> applyForStudy(
       @RequestBody ApplyFormV2 form, @RequestAttribute Claims claims) {

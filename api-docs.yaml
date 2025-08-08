@@ -1,0 +1,1196 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI definition
+  version: v1.3.1
+servers:
+  - url: http://localhost:8080
+    description: local
+  - url: /histudy
+    description: dev
+security:
+  - bearerAuth: [ ]
+paths:
+  # ===================
+  # Public APIs
+  # ===================
+  /api/public/teams:
+    get:
+      security: [ ]
+      tags:
+        - 공개 API
+      summary: 그룹 목록 조회
+      operationId: getTeams
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TeamRankDto'
+  /api/public/activity:
+    get:
+      security: [ ]
+      tags:
+        - 공개 API
+      summary: 활동 지표 조회
+      operationId: getActivityMetrics
+      parameters:
+        - name: term
+          in: query
+          required: false
+          schema:
+            type: string
+            default: all
+          description: Activity term filter (all or current)
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ActivityMetricsDto'
+
+  # ===================
+  # Authentication APIs
+  # ===================
+  /api/auth/login:
+    get:
+      security: [ ]
+      tags:
+        - 인증 API
+      summary: 로그인
+      operationId: login
+      parameters:
+        - name: sub
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserLogin'
+  /api/auth/token:
+    post:
+      security: [ ]
+      tags:
+        - 인증 API
+      summary: 토큰 재발급
+      operationId: issueAccessToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenForm'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenInfo'
+
+  # ===================
+  # User Management APIs
+  # ===================
+  /api/users:
+    get:
+      tags:
+        - 일반 사용자 API
+      summary: 유저 검색
+      operationId: searchUser
+      parameters:
+        - name: search
+          in: query
+          required: false
+          allowEmptyValue: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserDto'
+      deprecated: true
+    post:
+      tags:
+        - 일반 사용자 API
+      summary: 회원가입
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserForm'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserLogin'
+  /api/v2/users:
+    get:
+      tags:
+        - 일반 사용자 API
+      summary: 유저 검색
+      operationId: searchUserWithMasking
+      parameters:
+        - name: search
+          in: query
+          required: false
+          allowEmptyValue: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserDto'
+  /api/users/me:
+    get:
+      tags:
+        - 일반 사용자 API
+      summary: 내 정보 조회 (Deprecated)
+      operationId: getMyInfo
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserMe'
+  /api/users/me/forms:
+    get:
+      tags:
+        - 일반 사용자 API
+      summary: 스터디 그룹 신청 정보 조회 (Deprecated)
+      operationId: getMyApplicationForm
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApplyFormDto'
+      deprecated: true
+  /api/v2/users/me/forms:
+    get:
+      tags:
+        - 일반 사용자 API
+      summary: 스터디 그룹 신청 정보 조회
+      operationId: getMyApplicationFormWithMasking
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApplyFormDto'
+
+  # ===================
+  # Study Application APIs
+  # ===================
+  /api/forms:
+    post:
+      tags:
+        - 스터디 신청 API
+      summary: 스터디 신청
+      operationId: applyForStudy_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyForm'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApplyFormDto'
+      deprecated: true
+  /api/v2/forms:
+    post:
+      tags:
+        - 스터디 신청 API
+      summary: 스터디 신청
+      operationId: applyForStudy
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyFormV2'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApplyFormDto'
+
+  # ===================
+  # Course Management APIs
+  # ===================
+  /api/courses:
+    get:
+      tags:
+        - 강의 관리 API
+      summary: 강의 목록 조회
+      operationId: getCourses
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CourseDto'
+    post:
+      tags:
+        - 강의 관리 API
+      summary: 강의 목록 업로드
+      operationId: importCourses
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - file
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+  /api/courses/delete:
+    post:
+      tags:
+        - 강의 관리 API
+      summary: 강의 삭제
+      operationId: deleteCourse
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseIdDto'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: integer
+                format: int32
+
+  # ===================
+  # Study Group/Team APIs
+  # ===================
+  /api/team/users:
+    get:
+      tags:
+        - 스터디 그룹 API
+      summary: 그룹 팀원 목록 조회
+      operationId: getTeamUsers
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserMeWithMasking'
+  /api/team/courses:
+    get:
+      tags:
+        - 스터디 그룹 API
+      summary: 그룹 선택 강의 목록 조회
+      operationId: getTeamCourses
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CourseDto'
+  /api/team/reports:
+    get:
+      tags:
+        - 스터디 그룹 API
+      summary: 그룹 보고서 목록 조회
+      operationId: getMyGroupReports
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ReportDto'
+    post:
+      tags:
+        - 스터디 그룹 API
+      summary: 그룹 스터디 보고서 생성
+      operationId: createReport
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportForm'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ReportInfo'
+  /api/team/reports/{reportId}:
+    get:
+      tags:
+        - 스터디 그룹 API
+      summary: 그룹 특정 보고서 조회
+      operationId: getReport
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ReportInfo'
+    delete:
+      tags:
+        - 스터디 그룹 API
+      summary: 그룹 특정 보고서 삭제
+      operationId: deleteReport
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+    patch:
+      tags:
+        - 스터디 그룹 API
+      summary: 그룹 특정 보고서 수정
+      operationId: updateReport
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportForm'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /api/team/reports/image:
+    post:
+      tags:
+        - 스터디 그룹 API
+      summary: 스터디 보고서에 들어갈 인증 이미지 업로드
+      operationId: uploadImage
+      parameters: [ ]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - image
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                imagePath: /path/to/image.png
+  /api/team/reports/{reportIdOr}/image:
+    post:
+      tags:
+        - 스터디 그룹 API
+      summary: 스터디 보고서에 들어갈 인증 이미지 업로드
+      operationId: uploadImage_1
+      parameters:
+        - name: reportIdOr
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - image
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                imagePath: /path/to/image.png
+
+  # ===================
+  # Admin APIs
+  # ===================
+  /api/admin/allUsers:
+    get:
+      tags:
+        - 관리자 API
+      summary: 그룹 배정 여부와 관계 없이 스터디 신청한 유저 목록 조회
+      operationId: getAppliedUsers
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserInfo'
+  /api/admin/users/unassigned:
+    get:
+      tags:
+        - 관리자 API
+      summary: 스터디를 신청했으나 그룹이 배정되지 않은 유저 목록 조회
+      operationId: unassignedUser
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserInfo'
+  /api/admin/unmatched-users:
+    get:
+      tags:
+        - 관리자 API
+      summary: 매칭되지 않은 유저 목록 조회
+      operationId: getUnmatchedUsers
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserInfo'
+  /api/admin/edit-user:
+    post:
+      tags:
+        - 관리자 API
+      summary: 유저 정보 수정
+      operationId: editUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserEdit'
+        required: true
+      responses:
+        '200':
+          description: OK
+  /api/admin/form:
+    delete:
+      tags:
+        - 관리자 API
+      summary: 특정 유저 지원폼 삭제
+      operationId: deleteForm
+      parameters:
+        - name: sid
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/admin/team-match:
+    post:
+      tags:
+        - 관리자 API
+      summary: 그룹 매칭
+      operationId: matchTeam
+      responses:
+        '200':
+          description: OK
+  /api/admin/manageGroup:
+    get:
+      tags:
+        - 관리자 API
+      summary: 그룹별 활동 조회
+      operationId: getTeams_1
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamDto'
+  /api/admin/groupReport/{id}:
+    get:
+      tags:
+        - 관리자 API
+      summary: 특정 그룹 보고서 조회
+      operationId: getTeamReports
+      parameters:
+        - name: id
+          in: path
+          description: 그룹 아이디
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TeamReportDto'
+  /api/admin/group:
+    delete:
+      tags:
+        - 관리자 API
+      summary: 그룹 삭제
+      operationId: deleteTeam
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamIdDto'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: integer
+                format: int32
+      deprecated: true
+
+components:
+  schemas:
+    ApplyFormV2:
+      type: object
+      properties:
+        friendIds:
+          type: array
+          description: List of friend added to apply form
+          example: [ 1, 2 ]
+          items:
+            type: integer
+            description: List of friend added to apply form
+            format: int64
+        courseIds:
+          type: array
+          description: List of course added to apply form
+          example: [ 1, 2 ]
+          items:
+            type: integer
+            description: List of course added to apply form
+            format: int64
+    ApplyFormDto:
+      type: object
+      properties:
+        friends:
+          type: array
+          description: List of friend added to apply form
+          items:
+            $ref: '#/components/schemas/UserBasic'
+        courses:
+          type: array
+          description: List of course added to apply form
+          items:
+            $ref: '#/components/schemas/CourseInfo'
+    CourseInfo:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Course ID
+          example: 1
+        name:
+          type: string
+          description: Course Name
+          example: Software Engineering
+        prof:
+          type: string
+          description: Course Professor
+          example: Prof. John Doe
+        code:
+          type: string
+          description: Course Code
+          example: CSEE 4111
+        year:
+          type: number
+          description: Course Year
+          example: 2021
+        semester:
+          type: number
+          description: Course Semester
+          example: 1
+      description: List of course added to apply form
+    UserBasic:
+      type: object
+      properties:
+        id:
+          type: number
+          description: User ID
+          example: 1
+        name:
+          type: string
+          description: User name
+          example: John Doe
+        sid:
+          type: string
+          description: User student ID
+          example: '211234567'
+      description: List of friend added to apply form
+    UserForm:
+      type: object
+      properties:
+        sub:
+          type: string
+          description: User ID
+          example: '1234567890'
+        name:
+          type: string
+          description: User Name
+          example: John Doe
+        email:
+          type: string
+          description: User Email
+          example: jd@example.com
+        sid:
+          type: string
+          description: User Student ID
+          example: '21800111'
+    JwtPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+      description: Token pairs
+    UserLogin:
+      type: object
+      properties:
+        isRegistered:
+          type: boolean
+          description: Registration status
+          example: true
+        tokenType:
+          type: string
+          description: Token type
+          example: 'Bearer '
+        tokens:
+          $ref: '#/components/schemas/JwtPair'
+        role:
+          type: string
+          description: Role
+          example: USER
+    ReportForm:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Report Title
+          example: Week 15 Report
+        content:
+          type: string
+          description: Report Content
+          example: This is a report for week 15.
+        totalMinutes:
+          type: number
+          description: Total minutes of the report
+          example: 60
+        participants:
+          type: array
+          description: Participant ID(PK) of the report
+          example: [ 1, 2 ]
+          items:
+            type: integer
+            description: Participant ID(PK) of the report
+            format: int64
+        images:
+          type: array
+          description: Image URLs of the report
+          example: [ "/path/to/image1.png", "/path/to/image2.png" ]
+          items:
+            type: string
+            description: Image URLs of the report
+            example: '"/path/to/image1.png","/path/to/image2.png"'
+        courses:
+          type: array
+          description: Course IDs of the report
+          example: [ 1, 2 ]
+          items:
+            type: integer
+            description: Course IDs of the report
+            format: int64
+    BasicCourseInfo:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Course ID
+          example: 1
+        name:
+          type: string
+          description: Course Name
+          example: Software Engineering
+        prof:
+          type: string
+          description: Course Professor
+          example: Prof. John Doe
+      description: Course names of the report
+      example: [ OOP, OS ]
+    ImageDto:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Image ID
+          example: 1
+        url:
+          type: string
+          description: Image URL
+          example: /path/to/image.png
+      description: Images of the report
+    ReportInfo:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Report ID
+          example: 1
+        title:
+          type: string
+          description: Report Title
+          example: Week 15 Report
+        content:
+          type: string
+          description: Report Content
+          example: This is a report for week 15
+        totalMinutes:
+          type: number
+          description: Total minutes of the report
+          example: 60
+        participants:
+          type: array
+          description: Participant SIDs of the report
+          items:
+            $ref: '#/components/schemas/UserBasic'
+        courses:
+          type: array
+          description: Course names of the report
+          example: [ OOP, OS ]
+          items:
+            $ref: '#/components/schemas/BasicCourseInfo'
+        images:
+          type: array
+          description: Images of the report
+          items:
+            $ref: '#/components/schemas/ImageDto'
+        regDate:
+          type: string
+          description: Report Last Modified Date
+          example: '2021-06-01 00:00:00'
+    ApplyForm:
+      type: object
+      properties:
+        friendIds:
+          type: array
+          description: List of friend added to apply form
+          example: [ '21800111', '21900111' ]
+          items:
+            type: string
+            description: List of friend added to apply form
+            example: '"21800111","21900111"'
+        courseIds:
+          type: array
+          description: List of course added to apply form
+          example: [ 1, 2 ]
+          items:
+            type: integer
+            description: List of course added to apply form
+            format: int64
+    CourseIdDto:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Course ID
+          example: 1
+    TokenForm:
+      type: object
+      properties:
+        grantType:
+          type: string
+          description: Token Type
+          example: refresh_token
+        refreshToken:
+          type: string
+          description: Token
+          example: <sample-jwt-token>
+    TokenInfo:
+      type: object
+      properties:
+        tokenType:
+          type: string
+        grantType:
+          type: string
+          enum:
+            - ACCESS_TOKEN
+            - REFRESH_TOKEN
+        token:
+          type: string
+    UserEdit:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: User ID
+          format: int64
+        team:
+          type: integer
+          description: Group tag
+          format: int32
+          example: 112
+        name:
+          type: string
+          description: User name
+          example: John Doe
+        sid:
+          type: string
+          description: User student ID
+          example: '21800012'
+    UserDto:
+      type: object
+      properties:
+        users:
+          type: array
+          description: List of user
+          items:
+            $ref: '#/components/schemas/UserMatching'
+    UserMatching:
+      type: object
+      properties:
+        name:
+          type: string
+          description: User name
+          example: John Doe
+        sid:
+          type: string
+          description: User student ID
+          example: '211234567'
+        email:
+          type: string
+          description: User email
+          example: jd@example.com
+      description: List of user
+    UserMe:
+      type: object
+      properties:
+        id:
+          type: number
+          description: User ID
+          example: 1
+        name:
+          type: string
+          description: User name
+          example: John Doe
+        sid:
+          type: string
+          description: User student ID
+          example: '211234567'
+        email:
+          type: string
+          description: User email
+          example: user@test.com
+    UserMeWithMasking:
+      type: object
+      properties:
+        id:
+          type: number
+          description: User ID
+          example: 1
+        name:
+          type: string
+          description: User name
+          example: John Doe
+        sid:
+          type: string
+          description: User student ID
+          example: '223****4'
+        email:
+          type: string
+          description: User email
+          example: user@test.com
+        tag:
+          type: integer
+          description: Group tag
+          format: int32
+          example: 112
+    ReportDto:
+      type: object
+      properties:
+        reports:
+          type: array
+          description: List of reports
+          items:
+            $ref: '#/components/schemas/ReportInfo'
+    CourseDto:
+      type: object
+      properties:
+        courses:
+          type: array
+          description: List of courses
+          items:
+            $ref: '#/components/schemas/CourseInfo'
+    TeamInfo:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Team Tag
+          example: 1
+        members:
+          type: array
+          description: Team members
+          example: [ John Doe, Jane Doe ]
+          items:
+            type: string
+            description: Team members
+            example: '"John Doe","Jane Doe"'
+        reports:
+          type: number
+          description: Number of reports created
+          example: 5
+        totalMinutes:
+          type: number
+          description: Total time studied
+          example: 120
+        thumbnail:
+          type: string
+          description: Team thumbnail(from the latest report)
+          example: https://i.imgur.com/3QXm2oF.png
+      description: List of teams
+    TeamRankDto:
+      type: object
+      properties:
+        teams:
+          type: array
+          description: List of teams
+          items:
+            $ref: '#/components/schemas/TeamInfo'
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: number
+          description: User ID
+          example: 1
+        name:
+          type: string
+          description: User name
+          example: John Doe
+        sid:
+          type: string
+          description: User student ID
+          example: '211234567'
+        group:
+          type: integer
+          description: Group tag
+          format: int32
+          example: 112
+        email:
+          type: string
+          description: User email
+          example: abc@example.ac.kr
+        friends:
+          type: array
+          description: list of friend added
+          items:
+            $ref: '#/components/schemas/UserBasic'
+        courses:
+          type: array
+          description: list of course added
+          items:
+            $ref: '#/components/schemas/BasicCourseInfo'
+    TeamDto:
+      type: object
+      properties:
+        group:
+          type: number
+          description: Team ID
+          example: 1
+        tag:
+          type: integer
+          format: int32
+        members:
+          type: array
+          description: Team members
+          items:
+            $ref: '#/components/schemas/UserInfo'
+        reports:
+          type: number
+          description: Number of reports created
+          example: 5
+        times:
+          type: number
+          description: Total time studied
+          example: 120
+    ReportBasic:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Report ID
+          example: 1
+        title:
+          type: string
+          description: Report Title
+          example: Week 15 Report
+        regDate:
+          type: string
+          description: Report Last Modified Date
+          example: '2021-06-01 00:00:00'
+        totalMinutes:
+          type: number
+          description: Total minutes of the report
+          example: 60
+        thumbnail:
+          type: string
+          description: Thumbnail of the report
+          example: https://histudy.s3.ap-northeast-2.amazonaws.com/2021-06-01-00-00-00-1
+      description: Reports information
+      example: 120
+    TeamReportDto:
+      type: object
+      properties:
+        group:
+          type: number
+          description: Team ID
+          example: 1
+          deprecated: true
+        tag:
+          type: integer
+          description: Team tag number
+          format: int32
+          example: 1
+        members:
+          type: array
+          description: Team members
+          items:
+            $ref: '#/components/schemas/UserBasic'
+        totalTime:
+          type: number
+          description: Total time studied
+          example: 300
+        reports:
+          type: array
+          description: Reports information
+          example: 120
+          items:
+            $ref: '#/components/schemas/ReportBasic'
+    TeamIdDto:
+      type: object
+      properties:
+        groupId:
+          type: number
+          description: Team ID
+          example: 1
+    ActivityMetricsDto:
+      type: object
+      properties:
+        studyMembers:
+          type: integer
+          format: int64
+          description: Number of study members
+          example: 100
+        studyGroups:
+          type: integer
+          format: int64
+          description: Number of study groups
+          example: 50
+        studyHours:
+          type: integer
+          format: int64
+          description: Total study hours
+          example: 200
+        reports:
+          type: integer
+          format: int64
+          description: Number of study reports
+          example: 300
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
