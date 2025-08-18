@@ -21,4 +21,16 @@ public class AcademicTerm extends BaseTime {
   private TermType semester = TermType.NONE;
 
   @Builder.Default private Boolean isCurrent = false;
+
+  /**
+   * Sets whether this academic term is the current active term.
+   *
+   * This updates the entity's internal `isCurrent` flag; callers may pass
+   * `true`, `false`, or `null` (to unset the flag).
+   *
+   * @param current true if this term should be marked current, false otherwise, or null to unset
+   */
+  public void setCurrent(Boolean current) {
+    isCurrent = current;
+  }
 }
