@@ -93,6 +93,28 @@ class StudyApplicantRepositoryTest extends BaseRepositoryTest {
   }
 
   @Test
+  void 배정신청자수조회시_현재학기배정인원만반환() {
+    // Given
+    StudyApplicant currentAssigned =
+        TestDataFactory.createStudyApplicant(currentTerm, user1, List.of(user2), List.of(course1));
+    StudyApplicant currentUnassigned =
+        TestDataFactory.createStudyApplicant(currentTerm, user2, List.of(user1), List.of(course1));
+    StudyApplicant pastAssigned =
+        TestDataFactory.createStudyApplicant(pastTerm, user3, List.of(), List.of(course2));
+
+    studyApplicantRepository.saveAll(List.of(currentAssigned, currentUnassigned, pastAssigned));
+
+    studyGroupRepository.save(StudyGroup.of(1, currentTerm, List.of(currentAssigned)));
+    studyGroupRepository.save(StudyGroup.of(2, pastTerm, List.of(pastAssigned)));
+
+    // When
+    long assignedCount = studyApplicantRepository.countAssignedApplicants(currentTerm);
+
+    // Then
+    assertThat(assignedCount).isEqualTo(1L);
+  }
+
+  @Test
   void 특정학기신청자조회시_해당학기신청자목록반환() {
     // Given
     StudyApplicant currentApplicant =

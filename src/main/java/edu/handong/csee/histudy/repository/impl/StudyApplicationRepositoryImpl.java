@@ -32,6 +32,11 @@ public class StudyApplicationRepositoryImpl implements StudyApplicantRepository 
   }
 
   @Override
+  public long countAssignedApplicants(AcademicTerm currentTerm) {
+    return repository.countAssignedApplicants(currentTerm);
+  }
+
+  @Override
   public List<StudyApplicant> findAllByTerm(AcademicTerm currentTerm) {
     return repository.findAllByTerm(currentTerm);
   }

@@ -28,6 +28,11 @@ public interface JpaStudyApplicantRepository extends JpaRepository<StudyApplican
   List<StudyApplicant> findAssignedApplicants(AcademicTerm currentTerm);
 
   @Query(
+      "select count(s) from StudyApplicant s "
+          + "where s.academicTerm = :currentTerm and s.studyGroup is not null")
+  long countAssignedApplicants(@Param("currentTerm") AcademicTerm currentTerm);
+
+  @Query(
       "select s from StudyApplicant s left join fetch s.preferredCourses "
           + "where s.academicTerm = :currentTerm")
   List<StudyApplicant> findAllByTerm(AcademicTerm currentTerm);

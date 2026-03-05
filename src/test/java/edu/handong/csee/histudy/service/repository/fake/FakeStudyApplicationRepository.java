@@ -37,6 +37,13 @@ public class FakeStudyApplicationRepository implements StudyApplicantRepository 
   }
 
   @Override
+  public long countAssignedApplicants(AcademicTerm currentTerm) {
+    return store.stream()
+        .filter(e -> e.getAcademicTerm().equals(currentTerm) && e.hasStudyGroup())
+        .count();
+  }
+
+  @Override
   public List<StudyApplicant> findAllByTerm(AcademicTerm currentTerm) {
     return store.stream().filter(e -> e.getAcademicTerm().equals(currentTerm)).toList();
   }

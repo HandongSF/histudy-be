@@ -14,6 +14,8 @@ public interface StudyApplicantRepository {
 
   List<StudyApplicant> findAssignedApplicants(AcademicTerm currentTerm);
 
+  long countAssignedApplicants(AcademicTerm currentTerm);
+
   List<StudyApplicant> findAllByTerm(AcademicTerm currentTerm);
 
   List<StudyApplicant> findAllByStudyGroup(StudyGroup group);
