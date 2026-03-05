@@ -1,17 +1,14 @@
 services:
   webapp:
-    image: ${IMAGE_REF:-ghcr.io/handongsf/histudy-be:dev}
-    container_name: webapp
+    image: ${IMAGE_REF}
+    container_name: histudy-api
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-8080}:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-      CUSTOM_RESOURCE_LOCATION: ${CUSTOM_RESOURCE_LOCATION:-/webapp/image/}
-      LOG_PATH: ${LOG_PATH:-/webapp/log}
-      LOGBACK_ROLLINGPOLICY_MAX_HISTORY: ${LOGBACK_ROLLINGPOLICY_MAX_HISTORY:-30}
-      LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE: ${LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE:-5MB}
+    environment: 
+      SPRING_PROFILES_ACTIVE: "${ACTIVE_PROFILE:-dev}"
     volumes:
+      - ${CONFIG_PATH}:/config/:ro
       - webapp_images:/webapp/image
       - webapp_logs:/webapp/log
 
