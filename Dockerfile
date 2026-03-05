@@ -1,4 +1,4 @@
-FROM amazoncorretto:17 AS builder
+FROM eclipse-temurin:17-jdk-jammy AS builder
 
 ARG STATIC_PATH=src/main/resources/static
 ARG API_DOCS=api-docs.yaml
@@ -12,12 +12,12 @@ RUN chmod +x gradlew && \
     mv "$API_DOCS" "$STATIC_PATH" && \
     ./gradlew bootJar --no-daemon
 
-FROM amazoncorretto:17
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /webapp
 
 RUN groupadd -r app && \
-    useradd -r -g app -d /webapp -s /sbin/nologin app && \
+    useradd -r -g app -d /webapp -s /bin/false app && \
     mkdir -p image log && \
     chown -R app:app /webapp
 
