@@ -1,0 +1,112 @@
+name: Deploy Dev
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build and Publish
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ format('{0}@{1}', steps.meta.outputs.image, steps.build.outputs.digest) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Prepare image metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE_REPOSITORY=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME="ghcr.io/${IMAGE_REPOSITORY}"
+          TARGET_SHA="${{ github.event.workflow_run.head_sha }}"
+          SHA_TAG="sha-${TARGET_SHA:0:7}"
+
+          echo "image=${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "sha_ref=${IMAGE_NAME}:${SHA_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/arm64
+          tags: ${{ steps.meta.outputs.sha_ref }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+  deploy:
+    name: Deploy to dev
+    needs: publish
+    runs-on: [self-hosted, HIStudy, dev]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    env:
+      IMAGE_REF: ${{ needs.publish.outputs.image_ref }}
+      HOST_PORT: ${{ vars.DEPLOY_HOST_PORT || '8080' }}
+      ACTIVE_PROFILE: ${{ vars.DEPLOY_ACTIVE_PROFILE || 'dev' }}
+      CONFIG_PATH: ${{ vars.DEPLOY_CONFIG_PATH || '/etc/histudy-be/'}}
+    steps:
+      - name: Checkout deployment spec
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Validate deployment settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CONFIG_PATH}" ]; then
+            echo "Repository variable DEPLOY_CONFIG_PATH is required." >&2
+            exit 1
+          fi
+
+          if [ ! -d "${CONFIG_PATH}" ]; then
+            echo "CONFIG_PATH does not exist: ${CONFIG_PATH}" >&2
+            exit 1
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy image with Docker Compose
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose pull
+          docker compose up -d

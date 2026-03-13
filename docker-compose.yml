@@ -1,5 +1,5 @@
 services:
-  histudy-api:
+  histudy-be:
     image: ${IMAGE_REF}
     restart: unless-stopped
     ports:
@@ -8,7 +8,7 @@ services:
       SPRING_PROFILES_ACTIVE: ${ACTIVE_PROFILE:-dev}
       SPRING_CONFIG_ADDITIONAL_LOCATION: file:/config/application-${ACTIVE_PROFILE:-dev}.yml
     volumes:
-      - ${CONFIG_PATH}:/config/:ro
+      - ${CONFIG_PATH:-/etc/histudy-be/}:/config/:ro
       - webapp_images:/webapp/image
       - webapp_logs:/webapp/log
 

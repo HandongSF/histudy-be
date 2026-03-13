@@ -1,0 +1,30 @@
+name: Deploy Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to deploy
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: ${{ github.workflow }}
+
+permissions: {}
+
+jobs:
+  deploy:
+    name: Deploy to prod
+    runs-on: [self-hosted, HIStudy, prod]
+    timeout-minutes: 20
+    env:
+      DEPLOY_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      DEPLOY_PROD_COMMAND: ${{ vars.DEPLOY_PROD_COMMAND }}
+    steps:
+      - name: Run deployment script
+        shell: bash
+        run: test -n "${DEPLOY_PROD_COMMAND}" && bash -lc "${DEPLOY_PROD_COMMAND}"
