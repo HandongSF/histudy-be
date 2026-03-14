@@ -42,40 +42,6 @@ HIStudy는 한동대학교 온라인 스터디그룹 관리 서비스입니다. 
               include: local
     ```
 
-### Docker Compose 설정 파일 준비
-
-`docker-compose.yml`은 `SPRING_CONFIG_ADDITIONAL_LOCATION=file:/config/application-${ACTIVE_PROFILE:-dev}.yml` 값을 사용해 컨테이너 밖의 설정 파일을 읽습니다. 배포 전에는 `CONFIG_PATH`와 `ACTIVE_PROFILE`에 맞는 파일을 호스트에 먼저 준비해야 합니다.
-
-1. `CONFIG_PATH`로 사용할 디렉터리를 생성합니다.
-
-   ```shell
-   mkdir -p /config
-   ```
-
-2. `ACTIVE_PROFILE` 값에 맞춰 설정 파일 이름을 준비합니다.
-   `ACTIVE_PROFILE=dev`이면 `/config/application-dev.yml`, `ACTIVE_PROFILE=prod`이면 `/config/application-prod.yml` 파일이 필요합니다.
-
-3. 필요한 Spring 설정을 해당 파일에 작성합니다.
-
-   ```yaml
-   # /config/application-prod.yml
-   spring:
-     datasource:
-       url: jdbc:mysql://db:3306/histudy
-       username: histudy
-       password: change-me
-   ```
-
-4. 컨테이너가 읽을 수 있도록 파일 권한과 소유자를 점검합니다.
-   읽기 전용 마운트이므로 최소한 컨테이너 실행 계정이 파일을 읽을 수 있어야 하며, 일반적으로 `chmod 640 /config/application-*.yml` 수준이면 충분합니다.
-
-5. Compose 실행 시 환경 변수를 함께 지정합니다.
-
-   ```shell
-   CONFIG_PATH=/config ACTIVE_PROFILE=prod IMAGE_REF=ghcr.io/example/histudy:latest docker compose up -d
-   ```
-
-위 방식으로 실행하면 Compose가 `${CONFIG_PATH}:/config/:ro` 형태로 디렉터리를 마운트하고, Spring은 `/config/application-${ACTIVE_PROFILE}.yml`을 추가 설정 위치로 사용합니다.
 ## Contributing
 
 - 새로운 기능이나 개선사항을 제안하려면 Github Issue를 작성해주세요.
