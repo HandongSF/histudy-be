@@ -1,14 +1,15 @@
 services:
   histudy-be:
+    image: ${IMAGE_NAME:-histudy-be}:${IMAGE_TAG:-latest}
     build: .
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-8080}:8080"
     environment:
       SPRING_PROFILES_ACTIVE: ${ACTIVE_PROFILE:-dev}
-      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/webapp/application-${ACTIVE_PROFILE:-dev}.yml
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/webapp/config/application-${ACTIVE_PROFILE:-dev}.yml
     volumes:
-      - ${CONFIG_PATH:-/etc/histudy-be/}:/webapp/:ro
+      - ${CONFIG_PATH:-/etc/histudy-be/}:/webapp/config/:ro
       - webapp_images:/webapp/image
       - webapp_logs:/webapp/log
 

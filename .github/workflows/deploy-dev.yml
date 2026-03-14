@@ -22,6 +22,8 @@ jobs:
       HOST_PORT: ${{ vars.DEPLOY_HOST_PORT || '8080' }}
       ACTIVE_PROFILE: ${{ vars.DEPLOY_ACTIVE_PROFILE || 'dev' }}
       CONFIG_PATH: ${{ vars.DEPLOY_CONFIG_PATH || '/etc/histudy-be/' }}
+      IMAGE_NAME: ${{ vars.DEPLOY_IMAGE_NAME || 'histudy-be' }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,4 +34,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export IMAGE_TAG="sha-${DEPLOY_SHA:0:7}"
           docker compose up -d --build
