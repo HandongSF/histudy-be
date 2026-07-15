@@ -14,12 +14,16 @@ class LayerDependencyTest {
 
   private static final Path MAIN_SOURCE_DIRECTORY =
       Path.of("src/main/java/edu/handong/csee/histudy");
+  private static final Path CONTROLLER_SOURCE_DIRECTORY =
+      MAIN_SOURCE_DIRECTORY.resolve("controller");
+  private static final String REPOSITORY_PACKAGE_PREFIX =
+      "edu.handong.csee.histudy.repository.";
   private static final List<String> FORBIDDEN_DEPENDENCY_PREFIXES =
       List.of(
-          "edu.handong.csee.histudy.controller",
-          "edu.handong.csee.histudy.dto",
-          "edu.handong.csee.histudy.repository",
-          "edu.handong.csee.histudy.service");
+          "edu.handong.csee.histudy.controller.",
+          "edu.handong.csee.histudy.dto.",
+          REPOSITORY_PACKAGE_PREFIX,
+          "edu.handong.csee.histudy.service.");
 
   @Test
   void 도메인계층은_외부레이어에_의존하지_않는다() throws IOException {
@@ -49,6 +53,29 @@ class LayerDependencyTest {
   }
 
   @Test
+  void 컨트롤러계층은_리포지토리에_직접의존하지_않는다() throws IOException {
+    // Given
+    List<Path> controllerSources;
+    try (Stream<Path> paths = Files.walk(CONTROLLER_SOURCE_DIRECTORY)) {
+      controllerSources =
+          paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+    }
+
+    // When
+    List<String> forbiddenDependencies =
+        controllerSources.stream()
+            .flatMap(
+                source ->
+                    readLines(source)
+                        .filter(LayerDependencyTest::isRepositoryDependency)
+                        .map(line -> source + ": " + line))
+            .toList();
+
+    // Then
+    assertThat(forbiddenDependencies).isEmpty();
+  }
+
+  @Test
   void FQCN으로_외부레이어를_참조하면_금지된의존성으로_탐지한다() {
     // Given
     String codeLine = "private edu.handong.csee.histudy.dto.UserDto userDto;";
@@ -58,6 +85,36 @@ class LayerDependencyTest {
 
     // Then
     assertThat(forbiddenDependency).isTrue();
+  }
+
+  @Test
+  void 주석에_리포지토리패키지명이_있으면_직접의존으로_탐지하지않는다() {
+    // Given
+    List<String> commentLines =
+        List.of(
+            "// " + REPOSITORY_PACKAGE_PREFIX,
+            "/* " + REPOSITORY_PACKAGE_PREFIX,
+            "* " + REPOSITORY_PACKAGE_PREFIX);
+
+    // When
+    List<String> repositoryDependencies =
+        commentLines.stream().filter(LayerDependencyTest::isRepositoryDependency).toList();
+
+    // Then
+    assertThat(repositoryDependencies).isEmpty();
+  }
+
+  @Test
+  void FQCN으로_리포지토리를_참조하면_직접의존으로_탐지한다() {
+    // Given
+    String codeLine =
+        "private edu.handong.csee.histudy.repository.UserRepository userRepository;";
+
+    // When
+    boolean repositoryDependency = isRepositoryDependency(codeLine);
+
+    // Then
+    assertThat(repositoryDependency).isTrue();
   }
 
   @Test
@@ -84,7 +141,16 @@ class LayerDependencyTest {
   }
 
   private static boolean isForbiddenDependency(String line) {
-    return FORBIDDEN_DEPENDENCY_PREFIXES.stream().anyMatch(line::contains);
+    return isSourceCodeLine(line)
+        && FORBIDDEN_DEPENDENCY_PREFIXES.stream().anyMatch(line::contains);
+  }
+
+  private static boolean isRepositoryDependency(String line) {
+    return isSourceCodeLine(line) && line.contains(REPOSITORY_PACKAGE_PREFIX);
+  }
+
+  private static boolean isSourceCodeLine(String line) {
+    return !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*");
   }
 
   private static boolean isDomainSource(Path source) {

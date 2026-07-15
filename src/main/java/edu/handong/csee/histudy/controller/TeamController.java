@@ -6,9 +6,6 @@ import edu.handong.csee.histudy.dto.CourseDto;
 import edu.handong.csee.histudy.dto.ReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.ForbiddenException;
-import edu.handong.csee.histudy.repository.AcademicTermRepository;
-import edu.handong.csee.histudy.repository.StudyGroupRepository;
-import edu.handong.csee.histudy.repository.UserRepository;
 import edu.handong.csee.histudy.service.CourseService;
 import edu.handong.csee.histudy.service.ImageService;
 import edu.handong.csee.histudy.service.ReportService;
@@ -31,9 +28,6 @@ public class TeamController {
   private final CourseService courseService;
   private final TeamService teamService;
   private final ImageService imageService;
-  private final UserRepository userRepository;
-  private final AcademicTermRepository academicTermRepository;
-  private final StudyGroupRepository studyGroupRepository;
 
   @PostMapping("/reports")
   public ReportDto.ReportInfo createReport(
