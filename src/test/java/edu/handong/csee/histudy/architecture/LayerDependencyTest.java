@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class LayerDependencyTest {
 
@@ -15,10 +16,10 @@ class LayerDependencyTest {
       Path.of("src/main/java/edu/handong/csee/histudy");
   private static final List<String> FORBIDDEN_DEPENDENCY_PREFIXES =
       List.of(
-          "import edu.handong.csee.histudy.controller",
-          "import edu.handong.csee.histudy.dto",
-          "import edu.handong.csee.histudy.repository",
-          "import edu.handong.csee.histudy.service");
+          "edu.handong.csee.histudy.controller",
+          "edu.handong.csee.histudy.dto",
+          "edu.handong.csee.histudy.repository",
+          "edu.handong.csee.histudy.service");
 
   @Test
   void 도메인계층은_외부레이어에_의존하지_않는다() throws IOException {
@@ -34,19 +35,49 @@ class LayerDependencyTest {
     }
 
     // When
-    List<String> forbiddenImports =
+    List<String> forbiddenDependencies =
         domainSources.stream()
-            .flatMap(LayerDependencyTest::readLines)
-            .filter(LayerDependencyTest::isForbiddenDependency)
+            .flatMap(
+                source ->
+                    readLines(source)
+                        .filter(LayerDependencyTest::isForbiddenDependency)
+                        .map(line -> source + ": " + line))
             .toList();
 
     // Then
-    assertThat(forbiddenImports).isEmpty();
+    assertThat(forbiddenDependencies).isEmpty();
+  }
+
+  @Test
+  void FQCN으로_외부레이어를_참조하면_금지된의존성으로_탐지한다() {
+    // Given
+    String codeLine = "private edu.handong.csee.histudy.dto.UserDto userDto;";
+
+    // When
+    boolean forbiddenDependency = isForbiddenDependency(codeLine);
+
+    // Then
+    assertThat(forbiddenDependency).isTrue();
+  }
+
+  @Test
+  void 파일경로에_금지된패키지명이_있어도_코드가_참조하지않으면_탐지하지않는다(
+      @TempDir Path directory) throws IOException {
+    // Given
+    Path source = directory.resolve("edu.handong.csee.histudy.service.Domain.java");
+    Files.writeString(source, "private String name;");
+
+    // When
+    List<String> forbiddenDependencies =
+        readLines(source).filter(LayerDependencyTest::isForbiddenDependency).toList();
+
+    // Then
+    assertThat(forbiddenDependencies).isEmpty();
   }
 
   private static Stream<String> readLines(Path source) {
     try {
-      return Files.readAllLines(source).stream().map(line -> source + ": " + line.trim());
+      return Files.readAllLines(source).stream().map(String::trim);
     } catch (IOException e) {
       throw new IllegalStateException("도메인 소스 파일을 읽을 수 없습니다: " + source, e);
     }

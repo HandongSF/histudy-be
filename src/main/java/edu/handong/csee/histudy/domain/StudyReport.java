@@ -90,8 +90,8 @@ public class StudyReport extends BaseTime {
       List<String> images,
       List<User> participants,
       List<Course> courses) {
-    this.title = requireNonNullElse(title, this.title);
-    this.content = requireNonNullElse(content, this.content);
+    this.title = title != null ? title : this.title;
+    this.content = content != null ? content : this.content;
     this.totalMinutes = requireNonNullElse(totalMinutes, this.totalMinutes);
 
     this.add(participants);
