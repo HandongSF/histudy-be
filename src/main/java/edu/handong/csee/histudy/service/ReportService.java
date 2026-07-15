@@ -106,7 +106,13 @@ public class ReportService {
     // parse image path to filename
     // /path/to/image.png -> image.png
     List<String> imageFilenames = imagePathMapper.extractFilename(form.getImages());
-    targetReport.update(form, imageFilenames, participants, courses);
+    targetReport.update(
+        form.getTitle(),
+        form.getContent(),
+        form.getTotalMinutes(),
+        imageFilenames,
+        participants,
+        courses);
 
     return true;
   }

@@ -1,8 +1,5 @@
 package edu.handong.csee.histudy.domain;
 
-import static java.util.Objects.requireNonNullElse;
-
-import edu.handong.csee.histudy.dto.UserDto;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -41,9 +38,9 @@ public class User extends BaseTime {
     this.role = role;
   }
 
-  public void edit(UserDto.UserEdit dto) {
-    this.sid = requireNonNullElse(dto.getSid(), this.sid);
-    this.name = requireNonNullElse(dto.getName(), this.name);
+  public void edit(String sid, String name) {
+    this.sid = sid != null ? sid : this.sid;
+    this.name = name != null ? name : this.name;
   }
 
   public String getSidWithMasking() {

@@ -2,7 +2,6 @@ package edu.handong.csee.histudy.domain;
 
 import static java.util.Objects.requireNonNullElse;
 
-import edu.handong.csee.histudy.controller.form.ReportForm;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,10 +84,15 @@ public class StudyReport extends BaseTime {
   }
 
   public boolean update(
-      ReportForm form, List<String> images, List<User> participants, List<Course> courses) {
-    this.title = requireNonNullElse(form.getTitle(), this.title);
-    this.content = requireNonNullElse(form.getContent(), this.content);
-    this.totalMinutes = requireNonNullElse(form.getTotalMinutes(), this.totalMinutes);
+      String title,
+      String content,
+      Long totalMinutes,
+      List<String> images,
+      List<User> participants,
+      List<Course> courses) {
+    this.title = title != null ? title : this.title;
+    this.content = content != null ? content : this.content;
+    this.totalMinutes = requireNonNullElse(totalMinutes, this.totalMinutes);
 
     this.add(participants);
     this.insert(images);

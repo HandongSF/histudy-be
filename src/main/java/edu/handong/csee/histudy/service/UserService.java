@@ -207,7 +207,7 @@ public class UserService {
     Optional<StudyApplicant> applicantOr =
         studyApplicantRepository.findByUserAndTerm(user, currentTerm);
 
-    user.edit(form);
+    user.edit(form.getSid(), form.getName());
 
     Optional.ofNullable(form.getTeam())
         .ifPresentOrElse(
