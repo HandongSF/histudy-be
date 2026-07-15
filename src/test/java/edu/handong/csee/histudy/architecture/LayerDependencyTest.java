@@ -14,12 +14,16 @@ class LayerDependencyTest {
 
   private static final Path MAIN_SOURCE_DIRECTORY =
       Path.of("src/main/java/edu/handong/csee/histudy");
+  private static final Path CONTROLLER_SOURCE_DIRECTORY =
+      MAIN_SOURCE_DIRECTORY.resolve("controller");
+  private static final String REPOSITORY_PACKAGE_PREFIX =
+      "edu.handong.csee.histudy.repository.";
   private static final List<String> FORBIDDEN_DEPENDENCY_PREFIXES =
       List.of(
-          "edu.handong.csee.histudy.controller",
-          "edu.handong.csee.histudy.dto",
-          "edu.handong.csee.histudy.repository",
-          "edu.handong.csee.histudy.service");
+          "edu.handong.csee.histudy.controller.",
+          "edu.handong.csee.histudy.dto.",
+          REPOSITORY_PACKAGE_PREFIX,
+          "edu.handong.csee.histudy.service.");
 
   @Test
   void 도메인계층은_외부레이어에_의존하지_않는다() throws IOException {
@@ -41,6 +45,29 @@ class LayerDependencyTest {
                 source ->
                     readLines(source)
                         .filter(LayerDependencyTest::isForbiddenDependency)
+                        .map(line -> source + ": " + line))
+            .toList();
+
+    // Then
+    assertThat(forbiddenDependencies).isEmpty();
+  }
+
+  @Test
+  void 컨트롤러계층은_리포지토리에_직접의존하지_않는다() throws IOException {
+    // Given
+    List<Path> controllerSources;
+    try (Stream<Path> paths = Files.walk(CONTROLLER_SOURCE_DIRECTORY)) {
+      controllerSources =
+          paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+    }
+
+    // When
+    List<String> forbiddenDependencies =
+        controllerSources.stream()
+            .flatMap(
+                source ->
+                    readLines(source)
+                        .filter(line -> line.contains(REPOSITORY_PACKAGE_PREFIX))
                         .map(line -> source + ": " + line))
             .toList();
 

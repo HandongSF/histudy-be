@@ -13,9 +13,6 @@ import edu.handong.csee.histudy.dto.CourseDto;
 import edu.handong.csee.histudy.dto.ReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.interceptor.AuthenticationInterceptor;
-import edu.handong.csee.histudy.repository.AcademicTermRepository;
-import edu.handong.csee.histudy.repository.StudyGroupRepository;
-import edu.handong.csee.histudy.repository.UserRepository;
 import edu.handong.csee.histudy.service.CourseService;
 import edu.handong.csee.histudy.service.DiscordService;
 import edu.handong.csee.histudy.service.ImageService;
@@ -53,12 +50,6 @@ class TeamControllerTest {
 
   @MockitoBean private ImageService imageService;
 
-  @MockitoBean private UserRepository userRepository;
-
-  @MockitoBean private AcademicTermRepository academicTermRepository;
-
-  @MockitoBean private StudyGroupRepository studyGroupRepository;
-
   @MockitoBean private JwtService jwtService;
 
   @MockitoBean private DiscordService discordService;
@@ -73,10 +64,7 @@ class TeamControllerTest {
                     reportService,
                     courseService,
                     teamService,
-                    imageService,
-                    userRepository,
-                    academicTermRepository,
-                    studyGroupRepository))
+                    imageService))
             .setControllerAdvice(new ExceptionController(discordService))
             .addInterceptors(authenticationInterceptor)
             .build();
