@@ -1,13 +1,13 @@
 package edu.handong.csee.histudy.service;
 
 import edu.handong.csee.histudy.controller.form.ApplyForm;
-import edu.handong.csee.histudy.controller.form.UserForm;
 import edu.handong.csee.histudy.domain.*;
 import edu.handong.csee.histudy.dto.ApplyFormDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.*;
 import edu.handong.csee.histudy.repository.*;
 import edu.handong.csee.histudy.repository.StudyApplicantRepository;
+import edu.handong.csee.histudy.service.command.SignUpCommand;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -122,9 +122,9 @@ public class UserService {
             });
   }
 
-  public void signUp(UserForm userForm) {
+  public void signUp(SignUpCommand command) {
     userRepository
-        .findUserBySub(userForm.getSub())
+        .findUserBySub(command.sub())
         .ifPresentOrElse(
             __ -> {
               throw new UserAlreadyExistsException();
@@ -132,10 +132,10 @@ public class UserService {
             () ->
                 userRepository.save(
                     User.builder()
-                        .sid(userForm.getSid())
-                        .email(userForm.getEmail())
-                        .name(userForm.getName())
-                        .sub(userForm.getSub())
+                        .sid(command.sid())
+                        .email(command.email())
+                        .name(command.name())
+                        .sub(command.sub())
                         .role(Role.USER)
                         .build()));
   }

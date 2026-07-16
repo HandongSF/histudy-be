@@ -9,6 +9,7 @@ import edu.handong.csee.histudy.exception.ForbiddenException;
 import edu.handong.csee.histudy.jwt.JwtPair;
 import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.UserService;
+import edu.handong.csee.histudy.service.command.SignUpCommand;
 import io.jsonwebtoken.Claims;
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,7 +29,9 @@ public class UserController {
 
   @PostMapping("/api/users")
   public ResponseEntity<UserDto.UserLogin> createUser(@RequestBody UserForm userForm) {
-    userService.signUp(userForm);
+    userService.signUp(
+        new SignUpCommand(
+            userForm.getSub(), userForm.getName(), userForm.getEmail(), userForm.getSid()));
     JwtPair tokens = jwtService.issueToken(userForm.getEmail(), userForm.getName(), Role.USER);
 
     return ResponseEntity.ok(
