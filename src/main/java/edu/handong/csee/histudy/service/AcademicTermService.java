@@ -2,8 +2,8 @@ package edu.handong.csee.histudy.service;
 
 import static edu.handong.csee.histudy.dto.AcademicTermDto.*;
 
-import edu.handong.csee.histudy.controller.form.AcademicTermForm;
 import edu.handong.csee.histudy.domain.AcademicTerm;
+import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.dto.AcademicTermDto;
 import edu.handong.csee.histudy.exception.AcademicTermNotFoundException;
 import edu.handong.csee.histudy.exception.DuplicateAcademicTermException;
@@ -20,18 +20,18 @@ public class AcademicTermService {
   private final AcademicTermRepository academicTermRepository;
 
   @Transactional
-  public void createAcademicTerm(AcademicTermForm form) {
+  public void createAcademicTerm(Integer year, TermType semester) {
     academicTermRepository
-        .findByYearAndTerm(form.getYear(), form.getSemester())
+        .findByYearAndTerm(year, semester)
         .ifPresent(
             existing -> {
-              throw new DuplicateAcademicTermException(form.getYear(), form.getSemester());
+              throw new DuplicateAcademicTermException(year, semester);
             });
 
     AcademicTerm academicTerm =
         AcademicTerm.builder()
-            .academicYear(form.getYear())
-            .semester(form.getSemester())
+            .academicYear(year)
+            .semester(semester)
             .isCurrent(false)
             .build();
 

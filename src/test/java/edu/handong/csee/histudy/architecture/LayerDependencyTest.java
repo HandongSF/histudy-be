@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -16,8 +18,18 @@ class LayerDependencyTest {
       Path.of("src/main/java/edu/handong/csee/histudy");
   private static final Path CONTROLLER_SOURCE_DIRECTORY =
       MAIN_SOURCE_DIRECTORY.resolve("controller");
+  private static final Path SERVICE_SOURCE_DIRECTORY = MAIN_SOURCE_DIRECTORY.resolve("service");
+  private static final String CONTROLLER_PACKAGE_PREFIX =
+      "edu.handong.csee.histudy.controller.";
   private static final String REPOSITORY_PACKAGE_PREFIX =
       "edu.handong.csee.histudy.repository.";
+  private static final Set<String> LEGACY_SERVICE_CONTROLLER_DEPENDENCIES =
+      Set.of(
+          "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerForm;",
+          "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerReorderForm;",
+          "ReportService.java: import edu.handong.csee.histudy.controller.form.ReportForm;",
+          "UserService.java: import edu.handong.csee.histudy.controller.form.ApplyForm;",
+          "UserService.java: import edu.handong.csee.histudy.controller.form.UserForm;");
   private static final List<String> FORBIDDEN_DEPENDENCY_PREFIXES =
       List.of(
           "edu.handong.csee.histudy.controller.",
@@ -73,6 +85,30 @@ class LayerDependencyTest {
 
     // Then
     assertThat(forbiddenDependencies).isEmpty();
+  }
+
+  @Test
+  void 서비스계층의_컨트롤러의존은_레거시기준선을_넘지않는다() throws IOException {
+    // Given
+    List<Path> serviceSources;
+    try (Stream<Path> paths = Files.walk(SERVICE_SOURCE_DIRECTORY)) {
+      serviceSources =
+          paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+    }
+
+    // When
+    Set<String> controllerDependencies =
+        serviceSources.stream()
+            .flatMap(
+                source ->
+                    readLines(source)
+                        .filter(LayerDependencyTest::isControllerDependency)
+                        .map(line -> source.getFileName() + ": " + line))
+            .collect(Collectors.toSet());
+
+    // Then
+    assertThat(controllerDependencies)
+        .containsExactlyInAnyOrderElementsOf(LEGACY_SERVICE_CONTROLLER_DEPENDENCIES);
   }
 
   @Test
@@ -147,6 +183,10 @@ class LayerDependencyTest {
 
   private static boolean isRepositoryDependency(String line) {
     return isSourceCodeLine(line) && line.contains(REPOSITORY_PACKAGE_PREFIX);
+  }
+
+  private static boolean isControllerDependency(String line) {
+    return isSourceCodeLine(line) && line.contains(CONTROLLER_PACKAGE_PREFIX);
   }
 
   private static boolean isSourceCodeLine(String line) {
