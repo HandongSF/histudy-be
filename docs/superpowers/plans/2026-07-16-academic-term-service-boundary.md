@@ -41,8 +41,8 @@
 private static final Path SERVICE_SOURCE_DIRECTORY = MAIN_SOURCE_DIRECTORY.resolve("service");
 private static final String CONTROLLER_PACKAGE_PREFIX =
     "edu.handong.csee.histudy.controller.";
-private static final Set<String> LEGACY_SERVICE_CONTROLLER_DEPENDENCIES =
-    Set.of(
+private static final List<String> LEGACY_SERVICE_CONTROLLER_DEPENDENCIES =
+    List.of(
         "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerForm;",
         "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerReorderForm;",
         "ReportService.java: import edu.handong.csee.histudy.controller.form.ReportForm;",
@@ -53,22 +53,9 @@ private static final Set<String> LEGACY_SERVICE_CONTROLLER_DEPENDENCIES =
 ```java
 @Test
 void 서비스계층의_컨트롤러의존은_레거시기준선을_넘지않는다() throws IOException {
-  // Given
-  List<Path> serviceSources;
-  try (Stream<Path> paths = Files.walk(SERVICE_SOURCE_DIRECTORY)) {
-    serviceSources =
-        paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
-  }
-
-  // When
-  Set<String> controllerDependencies =
-      serviceSources.stream()
-          .flatMap(
-              source ->
-                  readLines(source)
-                      .filter(LayerDependencyTest::isControllerDependency)
-                      .map(line -> source.getFileName() + ": " + line))
-          .collect(Collectors.toSet());
+  // Given When
+  List<String> controllerDependencies =
+      collectControllerDependencies(SERVICE_SOURCE_DIRECTORY);
 
   // Then
   assertThat(controllerDependencies)
@@ -77,6 +64,32 @@ void 서비스계층의_컨트롤러의존은_레거시기준선을_넘지않는
 ```
 
 ```java
+private static List<String> collectControllerDependencies(Path serviceSourceDirectory)
+    throws IOException {
+  List<Path> serviceSources;
+  try (Stream<Path> paths = Files.walk(serviceSourceDirectory)) {
+    serviceSources =
+        paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+  }
+
+  return serviceSources.stream()
+      .flatMap(
+          source ->
+              readLines(source)
+                  .filter(LayerDependencyTest::isControllerDependency)
+                  .map(
+                      line ->
+                          relativeSourcePath(serviceSourceDirectory, source) + ": " + line))
+      .toList();
+}
+
+private static String relativeSourcePath(Path sourceDirectory, Path source) {
+  return sourceDirectory
+      .relativize(source)
+      .toString()
+      .replace(source.getFileSystem().getSeparator(), "/");
+}
+
 private static boolean isControllerDependency(String line) {
   return isSourceCodeLine(line) && line.contains(CONTROLLER_PACKAGE_PREFIX);
 }
