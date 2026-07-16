@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import edu.handong.csee.histudy.controller.form.BannerForm;
-import edu.handong.csee.histudy.controller.form.BannerReorderForm;
 import edu.handong.csee.histudy.domain.Banner;
 import edu.handong.csee.histudy.dto.BannerDto;
 import edu.handong.csee.histudy.exception.BannerNotFoundException;
@@ -184,8 +183,7 @@ class BannerServiceTest {
     Banner second = bannerRepository.save(secondBanner);
 
     // When
-    bannerService.reorderBanners(
-        new BannerReorderForm(List.of(second.getBannerId(), first.getBannerId())));
+    bannerService.reorderBanners(List.of(second.getBannerId(), first.getBannerId()));
 
     // Then
     assertThat(bannerRepository.findAllByOrderByDisplayOrderAsc())
@@ -204,8 +202,7 @@ class BannerServiceTest {
     // When Then
     assertThatThrownBy(
             () ->
-                bannerService.reorderBanners(
-                    new BannerReorderForm(List.of(first.getBannerId(), 999L))))
+                bannerService.reorderBanners(List.of(first.getBannerId(), 999L)))
         .isInstanceOf(MissingParameterException.class);
   }
 
