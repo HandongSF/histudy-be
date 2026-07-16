@@ -3,7 +3,6 @@ package edu.handong.csee.histudy.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import edu.handong.csee.histudy.controller.form.ApplyForm;
 import edu.handong.csee.histudy.controller.form.UserForm;
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
@@ -17,6 +16,7 @@ import edu.handong.csee.histudy.dto.ApplyFormDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
 import edu.handong.csee.histudy.exception.UserAlreadyExistsException;
+import edu.handong.csee.histudy.service.command.LegacyStudyApplicationCommand;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeCourseRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepository;
@@ -209,19 +209,15 @@ class UserServiceTest {
     User partner = userRepository.save(partnerUser);
     Course course = courseRepository.saveAll(List.of(primaryCourse)).get(0);
     userService.apply(
-        ApplyForm.builder()
-            .friendIds(List.of("22230001"))
-            .courseIds(List.of(course.getCourseId()))
-            .build(),
+        new LegacyStudyApplicationCommand(
+            List.of("22230001"), List.of(course.getCourseId())),
         "partner@histudy.com");
 
     // When
     ApplyFormDto result =
         userService.apply(
-            ApplyForm.builder()
-                .friendIds(List.of("22230002"))
-                .courseIds(List.of(course.getCourseId()))
-                .build(),
+            new LegacyStudyApplicationCommand(
+                List.of("22230002"), List.of(course.getCourseId())),
             "applicant@histudy.com");
 
     // Then
@@ -251,18 +247,14 @@ class UserServiceTest {
     Course firstCourse = courseRepository.saveAll(List.of(primaryCourse, secondaryCourse)).get(0);
     Course secondCourse = courseRepository.findAll().get(1);
     userService.apply(
-        ApplyForm.builder()
-            .friendIds(List.of("22230002"))
-            .courseIds(List.of(firstCourse.getCourseId()))
-            .build(),
+        new LegacyStudyApplicationCommand(
+            List.of("22230002"), List.of(firstCourse.getCourseId())),
         "applicant@histudy.com");
 
     // When
     userService.apply(
-        ApplyForm.builder()
-            .friendIds(List.of("22230003"))
-            .courseIds(List.of(secondCourse.getCourseId()))
-            .build(),
+        new LegacyStudyApplicationCommand(
+            List.of("22230003"), List.of(secondCourse.getCourseId())),
         "applicant@histudy.com");
 
     // Then
@@ -291,10 +283,8 @@ class UserServiceTest {
     assertThatThrownBy(
             () ->
                 userService.apply(
-                    ApplyForm.builder()
-                        .friendIds(List.of())
-                        .courseIds(List.of(course.getCourseId()))
-                        .build(),
+                    new LegacyStudyApplicationCommand(
+                        List.of(), List.of(course.getCourseId())),
                     "applicant@histudy.com"))
         .isInstanceOf(IllegalStateException.class);
   }
@@ -303,10 +293,11 @@ class UserServiceTest {
   void 현재_학기_없이_스터디를_신청하면_예외가_발생한다() {
     // Given
     userRepository.save(applicantUser);
-    ApplyForm form = ApplyForm.builder().friendIds(List.of()).courseIds(List.of()).build();
+    LegacyStudyApplicationCommand command =
+        new LegacyStudyApplicationCommand(List.of(), List.of());
 
     // When Then
-    assertThatThrownBy(() -> userService.apply(form, "applicant@histudy.com"))
+    assertThatThrownBy(() -> userService.apply(command, "applicant@histudy.com"))
         .isInstanceOf(NoCurrentTermFoundException.class);
   }
 

@@ -8,6 +8,7 @@ import edu.handong.csee.histudy.dto.CourseDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.ForbiddenException;
 import edu.handong.csee.histudy.service.UserService;
+import edu.handong.csee.histudy.service.command.LegacyStudyApplicationCommand;
 import io.jsonwebtoken.Claims;
 import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,9 @@ public class ApplyFormController {
   public ResponseEntity<ApplyFormDto> applyForStudy(
       @RequestBody ApplyForm form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.USER)) {
-      return ResponseEntity.ok(userService.apply(form, claims.getSubject()));
+      LegacyStudyApplicationCommand command =
+          new LegacyStudyApplicationCommand(form.getFriendIds(), form.getCourseIds());
+      return ResponseEntity.ok(userService.apply(command, claims.getSubject()));
     }
     throw new ForbiddenException();
   }
