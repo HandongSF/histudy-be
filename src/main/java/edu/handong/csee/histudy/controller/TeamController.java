@@ -10,6 +10,7 @@ import edu.handong.csee.histudy.service.CourseService;
 import edu.handong.csee.histudy.service.ImageService;
 import edu.handong.csee.histudy.service.ReportService;
 import edu.handong.csee.histudy.service.TeamService;
+import edu.handong.csee.histudy.service.command.ReportCommand;
 import io.jsonwebtoken.Claims;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,7 @@ public class TeamController {
   public ReportDto.ReportInfo createReport(
       @RequestBody ReportForm form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.MEMBER)) {
-      return reportService.createReport(form, claims.getSubject());
+      return reportService.createReport(toReportCommand(form), claims.getSubject());
     }
     throw new ForbiddenException();
   }
@@ -61,7 +62,7 @@ public class TeamController {
   public ResponseEntity<String> updateReport(
       @PathVariable Long reportId, @RequestBody ReportForm form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.MEMBER)) {
-      return (reportService.updateReport(reportId, form))
+      return (reportService.updateReport(reportId, toReportCommand(form)))
           ? ResponseEntity.ok().build()
           : ResponseEntity.notFound().build();
     }
@@ -119,5 +120,15 @@ public class TeamController {
       return ResponseEntity.ok(response);
     }
     throw new ForbiddenException();
+  }
+
+  private ReportCommand toReportCommand(ReportForm form) {
+    return new ReportCommand(
+        form.getTitle(),
+        form.getContent(),
+        form.getTotalMinutes(),
+        form.getParticipants(),
+        form.getImages(),
+        form.getCourses());
   }
 }
