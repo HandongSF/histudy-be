@@ -19,6 +19,8 @@ class LayerDependencyTest {
   private static final Path SERVICE_SOURCE_DIRECTORY = MAIN_SOURCE_DIRECTORY.resolve("service");
   private static final Path MATCHING_DOMAIN_SOURCE_DIRECTORY =
       MAIN_SOURCE_DIRECTORY.resolve("matching/domain");
+  private static final Path MATCHING_APPLICATION_SOURCE_DIRECTORY =
+      MAIN_SOURCE_DIRECTORY.resolve("matching/application");
   private static final String CONTROLLER_PACKAGE_PREFIX =
       "edu.handong.csee.histudy.controller.";
   private static final String REPOSITORY_PACKAGE_PREFIX =
@@ -79,6 +81,34 @@ class LayerDependencyTest {
 
     // Then
     assertThat(springDependencies).isEmpty();
+  }
+
+  @Test
+  void 매칭애플리케이션은_API와_레거시서비스에_의존하지_않는다() throws IOException {
+    // Given
+    List<Path> matchingApplicationSources;
+    try (Stream<Path> paths = Files.walk(MATCHING_APPLICATION_SOURCE_DIRECTORY)) {
+      matchingApplicationSources =
+          paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+    }
+
+    // When
+    List<String> forbiddenDependencies =
+        matchingApplicationSources.stream()
+            .flatMap(
+                source ->
+                    readLines(source)
+                        .filter(
+                            line ->
+                                isSourceCodeLine(line)
+                                    && (line.contains(CONTROLLER_PACKAGE_PREFIX)
+                                        || line.contains("edu.handong.csee.histudy.dto.")
+                                        || line.contains("edu.handong.csee.histudy.service.")))
+                        .map(line -> source + ": " + line))
+            .toList();
+
+    // Then
+    assertThat(forbiddenDependencies).isEmpty();
   }
 
   @Test

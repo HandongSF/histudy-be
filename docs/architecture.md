@@ -14,6 +14,7 @@
 - `service`: 비즈니스 로직과 오케스트레이션
 - `repository`, `repository/jpa`, `repository/impl`: 영속성과 조회 로직
 - `domain`: JPA 엔티티와 엔티티에 가까운 도메인 동작
+- `matching/application`: 매칭 유스케이스의 트랜잭션과 저장소 조율
 - `matching/domain`: 저장소나 Spring에 의존하지 않는 친구·과목 우선 매칭 규칙
 - `config`, `interceptor`, `jwt`: 인증과 요청 파이프라인 구성
 - `exception`, `util`: 공통 예외와 유틸리티
