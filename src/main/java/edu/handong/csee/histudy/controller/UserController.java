@@ -29,10 +29,11 @@ public class UserController {
 
   @PostMapping("/api/users")
   public ResponseEntity<UserDto.UserLogin> createUser(@RequestBody UserForm userForm) {
-    userService.signUp(
+    SignUpCommand command =
         new SignUpCommand(
-            userForm.getSub(), userForm.getName(), userForm.getEmail(), userForm.getSid()));
-    JwtPair tokens = jwtService.issueToken(userForm.getEmail(), userForm.getName(), Role.USER);
+            userForm.getSub(), userForm.getName(), userForm.getEmail(), userForm.getSid());
+    userService.signUp(command);
+    JwtPair tokens = jwtService.issueToken(command.email(), command.name(), Role.USER);
 
     return ResponseEntity.ok(
         UserDto.UserLogin.builder()
