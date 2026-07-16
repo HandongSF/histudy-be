@@ -26,7 +26,6 @@ class LayerDependencyTest {
           "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerForm;",
           "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerReorderForm;",
           "ReportService.java: import edu.handong.csee.histudy.controller.form.ReportForm;",
-          "UserService.java: import edu.handong.csee.histudy.controller.form.ApplyForm;",
           "UserService.java: import edu.handong.csee.histudy.controller.form.UserForm;");
   private static final List<String> FORBIDDEN_DEPENDENCY_PREFIXES =
       List.of(
