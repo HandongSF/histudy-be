@@ -3,7 +3,6 @@ package edu.handong.csee.histudy.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import edu.handong.csee.histudy.controller.form.UserForm;
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
 import edu.handong.csee.histudy.domain.RequestStatus;
@@ -17,6 +16,7 @@ import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
 import edu.handong.csee.histudy.exception.UserAlreadyExistsException;
 import edu.handong.csee.histudy.service.command.LegacyStudyApplicationCommand;
+import edu.handong.csee.histudy.service.command.SignUpCommand;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeCourseRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepository;
@@ -118,8 +118,8 @@ class UserServiceTest {
           .professor("Lee")
           .academicTerm(currentTerm)
           .build();
-  private final UserForm signUpForm =
-      new UserForm("sub-10", "Alice", "alice@histudy.com", "22230010");
+  private final SignUpCommand signUpCommand =
+      new SignUpCommand("sub-10", "Alice", "alice@histudy.com", "22230010");
 
   private FakeUserRepository userRepository;
   private FakeCourseRepository courseRepository;
@@ -173,14 +173,17 @@ class UserServiceTest {
   }
 
   @Test
-  void 회원가입하면_USER_권한으로_저장된다() {
+  void 회원가입하면_명령의_사용자정보를_USER_권한으로_저장한다() {
     // Given
     // When
-    userService.signUp(signUpForm);
+    userService.signUp(signUpCommand);
 
     // Then
     User savedUser = userRepository.findUserBySub("sub-10").orElseThrow();
+    assertThat(savedUser.getSub()).isEqualTo("sub-10");
+    assertThat(savedUser.getName()).isEqualTo("Alice");
     assertThat(savedUser.getEmail()).isEqualTo("alice@histudy.com");
+    assertThat(savedUser.getSid()).isEqualTo("22230010");
     assertThat(savedUser.getRole()).isEqualTo(Role.USER);
   }
 
@@ -197,7 +200,7 @@ class UserServiceTest {
             .build());
 
     // When Then
-    assertThatThrownBy(() -> userService.signUp(signUpForm))
+    assertThatThrownBy(() -> userService.signUp(signUpCommand))
         .isInstanceOf(UserAlreadyExistsException.class);
   }
 

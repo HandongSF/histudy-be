@@ -16,6 +16,7 @@ import edu.handong.csee.histudy.jwt.JwtPair;
 import edu.handong.csee.histudy.service.DiscordService;
 import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.UserService;
+import edu.handong.csee.histudy.service.command.SignUpCommand;
 import io.jsonwebtoken.Claims;
 import java.util.List;
 import java.util.Optional;
@@ -56,13 +57,14 @@ class UserControllerTest {
   }
 
   @Test
-  void 사용자가_회원가입시_성공() throws Exception {
+  void 사용자가_회원가입하면_요청값을_서비스명령으로_전달하고_토큰을_발급한다() throws Exception {
+    // Given
     UserForm userForm = new UserForm("google-sub-123", "Test User", "user@test.com", "22500101");
     JwtPair tokens = new JwtPair(List.of("access-token", "refresh-token"));
 
-    doNothing().when(userService).signUp(any(UserForm.class));
-    when(jwtService.issueToken(anyString(), anyString(), any(Role.class))).thenReturn(tokens);
+    when(jwtService.issueToken("user@test.com", "Test User", Role.USER)).thenReturn(tokens);
 
+    // When
     mockMvc
         .perform(
             post("/api/users")
@@ -73,6 +75,11 @@ class UserControllerTest {
         .andExpect(jsonPath("$.isRegistered").value(true))
         .andExpect(jsonPath("$.tokenType").value("Bearer "))
         .andExpect(jsonPath("$.role").value("USER"));
+
+    // Then
+    verify(userService)
+        .signUp(new SignUpCommand("google-sub-123", "Test User", "user@test.com", "22500101"));
+    verify(jwtService).issueToken("user@test.com", "Test User", Role.USER);
   }
 
   @Test
