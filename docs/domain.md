@@ -47,7 +47,7 @@ JWT 인터셉터가 요청에 claims를 넣은 뒤, 컨트롤러가 `Role.isAuth
 
 `matching.domain.MatchingPolicy`는 현재 학기의 미배정 신청자를 대상으로 두 단계 규칙을
 순서대로 적용합니다. `matching.application.MatchingApplicationService`는 현재 학기와 미배정 신청자를
-조회하고 정책 결과를 저장합니다. `TeamService.matchTeam()`는 기존 호출자를 위한 파사드로 유지됩니다.
+조회하고 정책 결과를 저장하며, 관리자 매칭 API가 이 유스케이스를 직접 호출합니다.
 
 1. 친구 우선 매칭
    아직 미배정 상태인 신청자 사이의 수락된 친구 요청을 사용합니다.

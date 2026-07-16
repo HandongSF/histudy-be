@@ -7,6 +7,7 @@ import edu.handong.csee.histudy.dto.TeamDto;
 import edu.handong.csee.histudy.dto.TeamReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.ForbiddenException;
+import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
 import edu.handong.csee.histudy.service.AcademicTermService;
 import edu.handong.csee.histudy.service.TeamService;
 import edu.handong.csee.histudy.service.UserService;
@@ -24,6 +25,7 @@ public class AdminController {
   private final TeamService teamService;
   private final UserService userService;
   private final AcademicTermService academicTermService;
+  private final MatchingApplicationService matchingApplicationService;
 
   @GetMapping(value = "/manageGroup")
   public ResponseEntity<List<TeamDto>> getTeams(@RequestAttribute Claims claims) {
@@ -63,7 +65,7 @@ public class AdminController {
   @PostMapping("/team-match")
   public ResponseEntity<Void> matchTeam(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      teamService.matchTeam();
+      matchingApplicationService.match();
       return ResponseEntity.status(HttpStatus.CREATED).build();
     }
     throw new ForbiddenException();

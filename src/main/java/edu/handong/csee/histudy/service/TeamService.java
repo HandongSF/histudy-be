@@ -4,7 +4,6 @@ import edu.handong.csee.histudy.domain.*;
 import edu.handong.csee.histudy.dto.*;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
 import edu.handong.csee.histudy.exception.UserNotFoundException;
-import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
 import edu.handong.csee.histudy.repository.*;
 import edu.handong.csee.histudy.repository.StudyApplicantRepository;
 import edu.handong.csee.histudy.util.ImagePathMapper;
@@ -26,7 +25,6 @@ public class TeamService {
   private final StudyReportRepository studyReportRepository;
 
   private final ImagePathMapper imagePathMapper;
-  private final MatchingApplicationService matchingApplicationService;
 
   public List<TeamDto> getTeams(String email) {
     AcademicTerm currentTerm =
@@ -123,7 +121,4 @@ public class TeamService {
     return new TeamRankDto(teams);
   }
 
-  public void matchTeam() {
-    matchingApplicationService.match();
-  }
 }

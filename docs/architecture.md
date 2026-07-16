@@ -25,6 +25,10 @@
 
 `controller -> service -> repository -> domain`
 
+매칭 유스케이스는 점진적 모듈화가 적용된 첫 경로로 다음과 같이 흐릅니다.
+
+`AdminController -> matching/application -> matching/domain + repository`
+
 유지해야 할 역할 분리는 다음과 같습니다.
 
 - 컨트롤러는 HTTP 요청 바인딩, 응답, 권한 검사를 담당합니다.
@@ -95,7 +99,8 @@
 ## 테스트 구조
 
 - 컨트롤러 테스트: 엔드포인트 동작과 응답 검증
-- 서비스 테스트: 비즈니스 규칙과 매칭 로직
+- 서비스 테스트: 전역 서비스의 비즈니스 동작
+- 매칭 테스트: `matching/domain`의 정책 규칙과 `matching/application`의 유스케이스 조율
 - 리포지토리 테스트: 커스텀 조회 동작
 - `service/repository/fake`: 서비스 테스트용 인메모리 테스트 더블
 - `support`: 공통 테스트 헬퍼

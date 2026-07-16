@@ -2,8 +2,6 @@ package edu.handong.csee.histudy.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
@@ -19,7 +17,6 @@ import edu.handong.csee.histudy.dto.TeamRankDto;
 import edu.handong.csee.histudy.dto.TeamReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
-import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyGroupRepository;
@@ -96,9 +93,6 @@ class TeamServiceTest {
     imagePathMapper = new ImagePathMapper();
     ReflectionTestUtils.setField(imagePathMapper, "origin", "https://histudy.handong.edu");
     ReflectionTestUtils.setField(imagePathMapper, "imageBasePath", "/images");
-    MatchingApplicationService matchingApplicationService =
-        new MatchingApplicationService(
-            academicTermRepository, studyApplicantRepository, studyGroupRepository);
     teamService =
         new TeamService(
             studyGroupRepository,
@@ -106,30 +100,7 @@ class TeamServiceTest {
             academicTermRepository,
             studyApplicantRepository,
             studyReportRepository,
-            imagePathMapper,
-            matchingApplicationService);
-  }
-
-  @Test
-  void 그룹을_자동_배정하면_매칭애플리케이션서비스에_위임한다() {
-    // Given
-    MatchingApplicationService matchingApplicationService =
-        mock(MatchingApplicationService.class);
-    TeamService facade =
-        new TeamService(
-            studyGroupRepository,
-            userRepository,
-            academicTermRepository,
-            studyApplicantRepository,
-            studyReportRepository,
-            imagePathMapper,
-            matchingApplicationService);
-
-    // When
-    facade.matchTeam();
-
-    // Then
-    verify(matchingApplicationService).match();
+            imagePathMapper);
   }
 
   @Test

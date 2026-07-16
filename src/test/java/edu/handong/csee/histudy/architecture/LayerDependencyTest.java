@@ -25,6 +25,8 @@ class LayerDependencyTest {
       "edu.handong.csee.histudy.controller.";
   private static final String REPOSITORY_PACKAGE_PREFIX =
       "edu.handong.csee.histudy.repository.";
+  private static final String MATCHING_APPLICATION_PACKAGE_PREFIX =
+      "edu.handong.csee.histudy.matching.application.";
   private static final List<String> LEGACY_SERVICE_CONTROLLER_DEPENDENCIES = List.of();
   private static final List<String> FORBIDDEN_DEPENDENCY_PREFIXES =
       List.of(
@@ -146,6 +148,16 @@ class LayerDependencyTest {
   }
 
   @Test
+  void 전역서비스는_매칭애플리케이션에_의존하지_않는다() throws IOException {
+    // Given When
+    List<String> matchingApplicationDependencies =
+        collectDependencies(SERVICE_SOURCE_DIRECTORY, MATCHING_APPLICATION_PACKAGE_PREFIX);
+
+    // Then
+    assertThat(matchingApplicationDependencies).isEmpty();
+  }
+
+  @Test
   void 같은이름의_서비스소스가_서로다른패키지에있어도_컨트롤러의존을_모두탐지한다(
       @TempDir Path serviceDirectory) throws IOException {
     // Given
@@ -248,8 +260,13 @@ class LayerDependencyTest {
 
   private static List<String> collectControllerDependencies(Path serviceSourceDirectory)
       throws IOException {
+    return collectDependencies(serviceSourceDirectory, CONTROLLER_PACKAGE_PREFIX);
+  }
+
+  private static List<String> collectDependencies(Path sourceDirectory, String packagePrefix)
+      throws IOException {
     List<Path> serviceSources;
-    try (Stream<Path> paths = Files.walk(serviceSourceDirectory)) {
+    try (Stream<Path> paths = Files.walk(sourceDirectory)) {
       serviceSources =
           paths
               .filter(Files::isRegularFile)
@@ -262,10 +279,10 @@ class LayerDependencyTest {
         .flatMap(
             source ->
                 readLines(source)
-                    .filter(LayerDependencyTest::isControllerDependency)
+                    .filter(line -> isSourceCodeLine(line) && line.contains(packagePrefix))
                     .map(
                         line ->
-                            relativeSourcePath(serviceSourceDirectory, source) + ": " + line))
+                            relativeSourcePath(sourceDirectory, source) + ": " + line))
         .toList();
   }
 
@@ -283,10 +300,6 @@ class LayerDependencyTest {
 
   private static boolean isRepositoryDependency(String line) {
     return isSourceCodeLine(line) && line.contains(REPOSITORY_PACKAGE_PREFIX);
-  }
-
-  private static boolean isControllerDependency(String line) {
-    return isSourceCodeLine(line) && line.contains(CONTROLLER_PACKAGE_PREFIX);
   }
 
   private static boolean isSourceCodeLine(String line) {
