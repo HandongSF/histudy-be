@@ -3,11 +3,12 @@ package edu.handong.csee.histudy.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import edu.handong.csee.histudy.controller.form.BannerForm;
 import edu.handong.csee.histudy.domain.Banner;
 import edu.handong.csee.histudy.dto.BannerDto;
 import edu.handong.csee.histudy.exception.BannerNotFoundException;
 import edu.handong.csee.histudy.exception.MissingParameterException;
+import edu.handong.csee.histudy.service.command.BannerCommand;
+import edu.handong.csee.histudy.service.command.BannerImage;
 import edu.handong.csee.histudy.service.repository.fake.FakeBannerRepository;
 import edu.handong.csee.histudy.util.ImagePathMapper;
 import java.awt.image.BufferedImage;
@@ -19,7 +20,6 @@ import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class BannerServiceTest {
@@ -115,15 +115,15 @@ class BannerServiceTest {
   void 새로운_배너를_등록하면_다음_노출순서로_저장된다() throws Exception {
     // Given
     bannerRepository.save(existingBanner);
-    BannerForm form =
-        new BannerForm(
+    BannerCommand command =
+        new BannerCommand(
             "  Spring Banner  ",
             "https://example.com/banner",
             true,
-            new MockMultipartFile("image", "banner.png", "image/png", bannerPngBytes));
+            new BannerImage("banner.png", "image/png", bannerPngBytes));
 
     // When
-    BannerDto.AdminBannerInfo result = bannerService.createBanner(form);
+    BannerDto.AdminBannerInfo result = bannerService.createBanner(command);
 
     // Then
     assertThat(result.getLabel()).isEqualTo("Spring Banner");
@@ -131,15 +131,46 @@ class BannerServiceTest {
     assertThat(bannerRepository.findAll()).hasSize(2);
     Path storedImage = tempDir.resolve(result.getImageUrl().replace("https://histudy.handong.edu/images/", ""));
     assertThat(Files.exists(storedImage)).isTrue();
+    assertThat(Files.readAllBytes(storedImage)).isEqualTo(bannerPngBytes);
   }
 
   @Test
   void 이미지_없이_배너를_등록하면_예외가_발생한다() {
     // Given
-    BannerForm form = new BannerForm("Banner", "https://example.com/banner", true, null);
+    BannerCommand command = new BannerCommand("Banner", "https://example.com/banner", true, null);
 
     // When Then
-    assertThatThrownBy(() -> bannerService.createBanner(form))
+    assertThatThrownBy(() -> bannerService.createBanner(command))
+        .isInstanceOf(MissingParameterException.class);
+  }
+
+  @Test
+  void 이미지가_아닌_내용으로_배너를_등록하면_예외가_발생한다() {
+    // Given
+    BannerCommand command =
+        new BannerCommand(
+            "Banner",
+            "https://example.com/banner",
+            true,
+            new BannerImage("banner.png", "image/png", "not-an-image".getBytes()));
+
+    // When Then
+    assertThatThrownBy(() -> bannerService.createBanner(command))
+        .isInstanceOf(MissingParameterException.class);
+  }
+
+  @Test
+  void 제한크기를_초과한_이미지로_배너를_등록하면_예외가_발생한다() {
+    // Given
+    BannerCommand command =
+        new BannerCommand(
+            "Banner",
+            "https://example.com/banner",
+            true,
+            new BannerImage("banner.png", "image/png", new byte[5 * 1024 * 1024 + 1]));
+
+    // When Then
+    assertThatThrownBy(() -> bannerService.createBanner(command))
         .isInstanceOf(MissingParameterException.class);
   }
 
@@ -148,17 +179,18 @@ class BannerServiceTest {
     // Given
     BannerDto.AdminBannerInfo created =
         bannerService.createBanner(
-            new BannerForm(
+            new BannerCommand(
                 "Original",
                 "https://example.com/original",
                 true,
-                new MockMultipartFile("image", "banner.png", "image/png", bannerPngBytes)));
+                new BannerImage("banner.png", "image/png", bannerPngBytes)));
     String originalImageUrl = created.getImageUrl();
 
     // When
     BannerDto.AdminBannerInfo updated =
         bannerService.updateBanner(
-            created.getId(), new BannerForm("Updated", "https://example.com/updated", false, null));
+            created.getId(),
+            new BannerCommand("Updated", "https://example.com/updated", false, null));
 
     // Then
     assertThat(updated.getLabel()).isEqualTo("Updated");
@@ -233,10 +265,10 @@ class BannerServiceTest {
   @Test
   void 존재하지_않는_배너를_업데이트하면_예외가_발생한다() {
     // Given
-    BannerForm form = new BannerForm("Updated", "https://example.com/updated", true, null);
+    BannerCommand command = new BannerCommand("Updated", "https://example.com/updated", true, null);
 
     // When Then
-    assertThatThrownBy(() -> bannerService.updateBanner(999L, form))
+    assertThatThrownBy(() -> bannerService.updateBanner(999L, command))
         .isInstanceOf(BannerNotFoundException.class);
   }
 

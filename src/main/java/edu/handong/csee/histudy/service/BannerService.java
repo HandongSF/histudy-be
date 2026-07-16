@@ -3,13 +3,14 @@ package edu.handong.csee.histudy.service;
 import static edu.handong.csee.histudy.util.ImageDirectories.BANNER;
 import static org.springframework.util.ResourceUtils.isUrl;
 
-import edu.handong.csee.histudy.controller.form.BannerForm;
 import edu.handong.csee.histudy.domain.Banner;
 import edu.handong.csee.histudy.dto.BannerDto;
 import edu.handong.csee.histudy.exception.BannerNotFoundException;
 import edu.handong.csee.histudy.exception.FileTransferException;
 import edu.handong.csee.histudy.exception.MissingParameterException;
 import edu.handong.csee.histudy.repository.BannerRepository;
+import edu.handong.csee.histudy.service.command.BannerCommand;
+import edu.handong.csee.histudy.service.command.BannerImage;
 import edu.handong.csee.histudy.util.ImagePathMapper;
 import edu.handong.csee.histudy.util.Utils;
 import java.awt.image.BufferedImage;
@@ -33,7 +34,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Transactional
@@ -76,13 +76,13 @@ public class BannerService {
         .toList();
   }
 
-  public BannerDto.AdminBannerInfo createBanner(BannerForm form) {
-    validateFormIsNotNull(form);
-    validateCreateForm(form);
-    MultipartFile image = form.getImage();
+  public BannerDto.AdminBannerInfo createBanner(BannerCommand command) {
+    validateRequestIsNotNull(command);
+    validateCreateCommand(command);
+    BannerImage image = command.image();
     validateImage(image);
 
-    String imagePath = saveImage(image, form.getLabel());
+    String imagePath = saveImage(image, command.label());
     scheduleImageDeletionAfterRollback(imagePath);
     int nextOrder =
         bannerRepository.findTopByOrderByDisplayOrderDesc().map(Banner::getDisplayOrder).orElse(0)
@@ -90,10 +90,10 @@ public class BannerService {
 
     Banner banner =
         Banner.builder()
-            .label(form.getLabel().trim())
+            .label(command.label().trim())
             .imagePath(imagePath)
-            .redirectUrl(normalizeRedirectUrl(form.getRedirectUrl()))
-            .active(form.getActive() == null || form.getActive())
+            .redirectUrl(normalizeRedirectUrl(command.redirectUrl()))
+            .active(command.active() == null || command.active())
             .displayOrder(nextOrder)
             .build();
 
@@ -101,15 +101,15 @@ public class BannerService {
     return toAdminBannerInfo(saved);
   }
 
-  public BannerDto.AdminBannerInfo updateBanner(Long bannerId, BannerForm form) {
-    validateFormIsNotNull(form);
+  public BannerDto.AdminBannerInfo updateBanner(Long bannerId, BannerCommand command) {
+    validateRequestIsNotNull(command);
     Banner banner = findBanner(bannerId);
 
     boolean hasAnyUpdate = false;
-    hasAnyUpdate |= updateLabelIfPresent(banner, form.getLabel());
-    hasAnyUpdate |= updateRedirectUrlIfPresent(banner, form.getRedirectUrl());
-    hasAnyUpdate |= updateActiveIfPresent(banner, form.getActive());
-    hasAnyUpdate |= updateImageIfPresent(banner, form.getImage());
+    hasAnyUpdate |= updateLabelIfPresent(banner, command.label());
+    hasAnyUpdate |= updateRedirectUrlIfPresent(banner, command.redirectUrl());
+    hasAnyUpdate |= updateActiveIfPresent(banner, command.active());
+    hasAnyUpdate |= updateImageIfPresent(banner, command.image());
 
     if (!hasAnyUpdate) {
       throw new MissingParameterException(MESSAGE_MISSING_UPDATE_PAYLOAD);
@@ -162,11 +162,11 @@ public class BannerService {
     bannerRepository.saveAll(banners);
   }
 
-  private void validateCreateForm(BannerForm form) {
-    if (form.getImage() == null || form.getImage().isEmpty()) {
+  private void validateCreateCommand(BannerCommand command) {
+    if (command.image() == null || command.image().isEmpty()) {
       throw new MissingParameterException(MESSAGE_MISSING_IMAGE);
     }
-    validateBlankField(form.getLabel(), MESSAGE_MISSING_LABEL);
+    validateBlankField(command.label(), MESSAGE_MISSING_LABEL);
   }
 
   private void validateBlankField(String field, String message) {
@@ -175,17 +175,17 @@ public class BannerService {
     }
   }
 
-  private void validateImage(MultipartFile image) {
-    if (image.getSize() > MAX_IMAGE_SIZE_BYTES) {
+  private void validateImage(BannerImage image) {
+    if (image.size() > MAX_IMAGE_SIZE_BYTES) {
       throw new MissingParameterException(MESSAGE_MAX_FILE_SIZE);
     }
 
-    String contentType = image.getContentType();
+    String contentType = image.contentType();
     if (contentType == null || !contentType.startsWith("image/")) {
       throw new MissingParameterException(MESSAGE_IMAGE_ONLY);
     }
 
-    try (var inputStream = image.getInputStream()) {
+    try (var inputStream = image.inputStream()) {
       BufferedImage decodedImage = ImageIO.read(inputStream);
       if (decodedImage == null) {
         throw new MissingParameterException(MESSAGE_IMAGE_ONLY);
@@ -241,8 +241,8 @@ public class BannerService {
     return normalized;
   }
 
-  private String saveImage(MultipartFile image, String label) {
-    String extension = getExtension(image.getOriginalFilename());
+  private String saveImage(BannerImage image, String label) {
+    String extension = getExtension(image.originalFilename());
     String normalizedLabel = normalizeLabelForFilename(label);
     String dateTime = Utils.getCurrentFormattedDateTime("yyyyMMdd_HHmmss");
     String random = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
@@ -257,7 +257,7 @@ public class BannerService {
     }
 
     try {
-      image.transferTo(file);
+      Files.write(file.toPath(), image.content());
       return relativePath;
     } catch (IOException e) {
       throw new FileTransferException();
@@ -296,8 +296,8 @@ public class BannerService {
     }
   }
 
-  private void validateFormIsNotNull(Object form) {
-    if (form == null) {
+  private void validateRequestIsNotNull(Object request) {
+    if (request == null) {
       throw new MissingParameterException(MESSAGE_EMPTY_REQUEST_BODY);
     }
   }
@@ -327,7 +327,7 @@ public class BannerService {
     return true;
   }
 
-  private boolean updateImageIfPresent(Banner banner, MultipartFile image) {
+  private boolean updateImageIfPresent(Banner banner, BannerImage image) {
     if (image == null || image.isEmpty()) {
       return false;
     }

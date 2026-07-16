@@ -4,15 +4,20 @@ import edu.handong.csee.histudy.controller.form.BannerForm;
 import edu.handong.csee.histudy.controller.form.BannerReorderForm;
 import edu.handong.csee.histudy.domain.Role;
 import edu.handong.csee.histudy.dto.BannerDto;
+import edu.handong.csee.histudy.exception.FileTransferException;
 import edu.handong.csee.histudy.exception.ForbiddenException;
 import edu.handong.csee.histudy.service.BannerService;
+import edu.handong.csee.histudy.service.command.BannerCommand;
+import edu.handong.csee.histudy.service.command.BannerImage;
 import io.jsonwebtoken.Claims;
+import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,7 +36,7 @@ public class BannerAdminController {
   public ResponseEntity<BannerDto.AdminBannerInfo> createBanner(
       @ModelAttribute BannerForm form, @RequestAttribute Claims claims) {
     requireAdmin(claims);
-    BannerDto.AdminBannerInfo created = bannerService.createBanner(form);
+    BannerDto.AdminBannerInfo created = bannerService.createBanner(toBannerCommand(form));
     return ResponseEntity.status(HttpStatus.CREATED).body(created);
   }
 
@@ -41,7 +46,7 @@ public class BannerAdminController {
       @ModelAttribute BannerForm form,
       @RequestAttribute Claims claims) {
     requireAdmin(claims);
-    BannerDto.AdminBannerInfo updated = bannerService.updateBanner(bannerId, form);
+    BannerDto.AdminBannerInfo updated = bannerService.updateBanner(bannerId, toBannerCommand(form));
     return ResponseEntity.ok(updated);
   }
 
@@ -64,6 +69,27 @@ public class BannerAdminController {
   private void requireAdmin(Claims claims) {
     if (!Role.isAuthorized(claims, Role.ADMIN)) {
       throw new ForbiddenException();
+    }
+  }
+
+  private BannerCommand toBannerCommand(BannerForm form) {
+    return new BannerCommand(
+        form.getLabel(),
+        form.getRedirectUrl(),
+        form.getActive(),
+        toBannerImage(form.getImage()));
+  }
+
+  private BannerImage toBannerImage(MultipartFile image) {
+    if (image == null) {
+      return null;
+    }
+
+    try {
+      return new BannerImage(
+          image.getOriginalFilename(), image.getContentType(), image.getBytes());
+    } catch (IOException e) {
+      throw new FileTransferException();
     }
   }
 }
