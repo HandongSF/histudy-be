@@ -69,7 +69,11 @@ private static List<String> collectControllerDependencies(Path serviceSourceDire
   List<Path> serviceSources;
   try (Stream<Path> paths = Files.walk(serviceSourceDirectory)) {
     serviceSources =
-        paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+        paths
+            .filter(Files::isRegularFile)
+            .filter(path -> path.toString().endsWith(".java"))
+            .sorted()
+            .toList();
   }
 
   return serviceSources.stream()

@@ -8,6 +8,7 @@ import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.dto.AcademicTermDto;
 import edu.handong.csee.histudy.exception.AcademicTermNotFoundException;
 import edu.handong.csee.histudy.exception.DuplicateAcademicTermException;
+import edu.handong.csee.histudy.exception.MissingParameterException;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,6 +76,20 @@ class AcademicTermServiceTest {
     // When Then
     assertThatThrownBy(() -> academicTermService.createAcademicTerm(2025, TermType.FALL))
         .isInstanceOf(DuplicateAcademicTermException.class);
+  }
+
+  @Test
+  void 연도나_학기없이_학기를_추가하면_예외가_발생한다() {
+    // Given
+    Integer missingYear = null;
+    TermType missingSemester = null;
+
+    // When Then
+    assertThatThrownBy(
+            () -> academicTermService.createAcademicTerm(missingYear, TermType.FALL))
+        .isInstanceOf(MissingParameterException.class);
+    assertThatThrownBy(() -> academicTermService.createAcademicTerm(2025, missingSemester))
+        .isInstanceOf(MissingParameterException.class);
   }
 
   @Test

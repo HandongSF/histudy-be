@@ -120,6 +120,19 @@ class LayerDependencyTest {
   }
 
   @Test
+  void java확장자와_같은이름의_디렉터리는_서비스소스로_탐지하지않는다(
+      @TempDir Path serviceDirectory) throws IOException {
+    // Given
+    Files.createDirectories(serviceDirectory.resolve("NotSource.java"));
+
+    // When
+    List<String> controllerDependencies = collectControllerDependencies(serviceDirectory);
+
+    // Then
+    assertThat(controllerDependencies).isEmpty();
+  }
+
+  @Test
   void FQCN으로_외부레이어를_참조하면_금지된의존성으로_탐지한다() {
     // Given
     String codeLine = "private edu.handong.csee.histudy.dto.UserDto userDto;";
@@ -189,7 +202,11 @@ class LayerDependencyTest {
     List<Path> serviceSources;
     try (Stream<Path> paths = Files.walk(serviceSourceDirectory)) {
       serviceSources =
-          paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+          paths
+              .filter(Files::isRegularFile)
+              .filter(path -> path.toString().endsWith(".java"))
+              .sorted()
+              .toList();
     }
 
     return serviceSources.stream()

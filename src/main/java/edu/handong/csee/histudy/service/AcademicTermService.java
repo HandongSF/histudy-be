@@ -7,6 +7,7 @@ import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.dto.AcademicTermDto;
 import edu.handong.csee.histudy.exception.AcademicTermNotFoundException;
 import edu.handong.csee.histudy.exception.DuplicateAcademicTermException;
+import edu.handong.csee.histudy.exception.MissingParameterException;
 import edu.handong.csee.histudy.repository.AcademicTermRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +18,17 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AcademicTermService {
 
+  private static final String MESSAGE_MISSING_ACADEMIC_TERM =
+      "연도와 학기는 필수 입력값입니다.";
+
   private final AcademicTermRepository academicTermRepository;
 
   @Transactional
   public void createAcademicTerm(Integer year, TermType semester) {
+    if (year == null || semester == null) {
+      throw new MissingParameterException(MESSAGE_MISSING_ACADEMIC_TERM);
+    }
+
     academicTermRepository
         .findByYearAndTerm(year, semester)
         .ifPresent(

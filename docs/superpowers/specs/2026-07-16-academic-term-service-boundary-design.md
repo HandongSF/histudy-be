@@ -73,6 +73,7 @@ public void createAcademicTerm(Integer year, TermType semester)
 
 - `/api/admin/academicTerm`의 요청 JSON과 응답 상태는 변경하지 않는다.
 - `AcademicTermForm`의 필드와 검증 방식은 변경하지 않는다.
+- 연도나 학기가 누락되면 기존 API 계약에 따라 `400 Bad Request`로 처리한다.
 - 중복 학기 검증과 저장되는 `AcademicTerm` 값은 기존과 동일하다.
 - DB 스키마와 JPA 매핑은 변경하지 않는다.
 - 기존 `AcademicTermDto` 응답 구조는 이번 PR 범위에 포함하지 않는다.
