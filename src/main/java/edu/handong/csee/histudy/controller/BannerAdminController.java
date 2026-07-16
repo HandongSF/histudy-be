@@ -6,6 +6,7 @@ import edu.handong.csee.histudy.domain.Role;
 import edu.handong.csee.histudy.dto.BannerDto;
 import edu.handong.csee.histudy.exception.FileTransferException;
 import edu.handong.csee.histudy.exception.ForbiddenException;
+import edu.handong.csee.histudy.exception.MissingParameterException;
 import edu.handong.csee.histudy.service.BannerService;
 import edu.handong.csee.histudy.service.command.BannerCommand;
 import edu.handong.csee.histudy.service.command.BannerImage;
@@ -23,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/banners")
 public class BannerAdminController {
+
+  private static final String MESSAGE_MAX_FILE_SIZE = "이미지 파일 크기는 5MB 이하여야 합니다.";
 
   private final BannerService bannerService;
 
@@ -81,8 +84,11 @@ public class BannerAdminController {
   }
 
   private BannerImage toBannerImage(MultipartFile image) {
-    if (image == null) {
+    if (image == null || image.isEmpty()) {
       return null;
+    }
+    if (image.getSize() > BannerImage.MAX_SIZE_BYTES) {
+      throw new MissingParameterException(MESSAGE_MAX_FILE_SIZE);
     }
 
     try {

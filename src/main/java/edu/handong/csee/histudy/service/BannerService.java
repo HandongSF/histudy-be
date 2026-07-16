@@ -40,7 +40,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class BannerService {
 
-  private static final long MAX_IMAGE_SIZE_BYTES = 5L * 1024 * 1024;
   private static final String IMAGE_NAME_FALLBACK_LABEL = "image";
   private static final String MESSAGE_MISSING_IMAGE = "이미지 파일은 필수입니다.";
   private static final String MESSAGE_MISSING_LABEL = "label은(는) 필수입니다.";
@@ -176,7 +175,7 @@ public class BannerService {
   }
 
   private void validateImage(BannerImage image) {
-    if (image.size() > MAX_IMAGE_SIZE_BYTES) {
+    if (image.size() > BannerImage.MAX_SIZE_BYTES) {
       throw new MissingParameterException(MESSAGE_MAX_FILE_SIZE);
     }
 

@@ -5,6 +5,8 @@ import java.io.InputStream;
 
 public record BannerImage(String originalFilename, String contentType, byte[] content) {
 
+  public static final long MAX_SIZE_BYTES = 5L * 1024 * 1024;
+
   public BannerImage {
     content = content == null ? new byte[0] : content.clone();
   }
