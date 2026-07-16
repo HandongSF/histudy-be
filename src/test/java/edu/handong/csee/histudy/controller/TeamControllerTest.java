@@ -2,6 +2,7 @@ package edu.handong.csee.histudy.controller;
 
 import static edu.handong.csee.histudy.support.AuthClaimsFactory.memberClaims;
 import static edu.handong.csee.histudy.support.AuthClaimsFactory.userClaims;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -19,11 +20,13 @@ import edu.handong.csee.histudy.service.ImageService;
 import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.ReportService;
 import edu.handong.csee.histudy.service.TeamService;
+import edu.handong.csee.histudy.service.command.ReportCommand;
 import io.jsonwebtoken.Claims;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -72,19 +75,23 @@ class TeamControllerTest {
 
   @Test
   void 그룹원이_스터디보고서생성시_성공() throws Exception {
+    // Given
     Claims claims = memberClaims("member@test.com");
 
     ReportForm form =
         ReportForm.builder()
+            .title("1주차")
             .courses(List.of(1L))
             .content("Study content")
             .totalMinutes(120L)
+            .participants(List.of(2L))
             .images(List.of("/path/to/image.jpg"))
             .build();
 
     ReportDto.ReportInfo reportInfo = mock(ReportDto.ReportInfo.class);
-    when(reportService.createReport(any(ReportForm.class), anyString())).thenReturn(reportInfo);
+    when(reportService.createReport(any(ReportCommand.class), anyString())).thenReturn(reportInfo);
 
+    // When
     mockMvc
         .perform(
             post("/api/team/reports")
@@ -93,6 +100,17 @@ class TeamControllerTest {
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isOk())
         .andExpect(content().contentType("application/json"));
+
+    // Then
+    ArgumentCaptor<ReportCommand> commandCaptor = ArgumentCaptor.forClass(ReportCommand.class);
+    verify(reportService).createReport(commandCaptor.capture(), eq("member@test.com"));
+    ReportCommand command = commandCaptor.getValue();
+    assertThat(command.title()).isEqualTo("1주차");
+    assertThat(command.content()).isEqualTo("Study content");
+    assertThat(command.totalMinutes()).isEqualTo(120L);
+    assertThat(command.participantIds()).containsExactly(2L);
+    assertThat(command.imageUrls()).containsExactly("/path/to/image.jpg");
+    assertThat(command.courseIds()).containsExactly(1L);
   }
 
   @Test
@@ -134,18 +152,22 @@ class TeamControllerTest {
 
   @Test
   void 그룹원이_보고서수정시_성공() throws Exception {
+    // Given
     Claims claims = memberClaims("member@test.com");
 
     ReportForm form =
         ReportForm.builder()
+            .title("수정된 제목")
             .courses(List.of(1L))
             .content("Updated content")
             .totalMinutes(150L)
+            .participants(List.of(2L))
             .images(List.of("/path/to/updated_image.jpg"))
             .build();
 
-    when(reportService.updateReport(anyLong(), any(ReportForm.class))).thenReturn(true);
+    when(reportService.updateReport(anyLong(), any(ReportCommand.class))).thenReturn(true);
 
+    // When
     mockMvc
         .perform(
             patch("/api/team/reports/1")
@@ -153,6 +175,17 @@ class TeamControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isOk());
+
+    // Then
+    ArgumentCaptor<ReportCommand> commandCaptor = ArgumentCaptor.forClass(ReportCommand.class);
+    verify(reportService).updateReport(eq(1L), commandCaptor.capture());
+    ReportCommand command = commandCaptor.getValue();
+    assertThat(command.title()).isEqualTo("수정된 제목");
+    assertThat(command.content()).isEqualTo("Updated content");
+    assertThat(command.totalMinutes()).isEqualTo(150L);
+    assertThat(command.participantIds()).containsExactly(2L);
+    assertThat(command.imageUrls()).containsExactly("/path/to/updated_image.jpg");
+    assertThat(command.courseIds()).containsExactly(1L);
   }
 
   @Test
@@ -160,7 +193,7 @@ class TeamControllerTest {
     Claims claims = memberClaims("member@test.com");
 
     ReportForm form = ReportForm.builder().build();
-    when(reportService.updateReport(anyLong(), any(ReportForm.class))).thenReturn(false);
+    when(reportService.updateReport(anyLong(), any(ReportCommand.class))).thenReturn(false);
 
     mockMvc
         .perform(

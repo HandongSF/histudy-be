@@ -1,12 +1,12 @@
 package edu.handong.csee.histudy.service;
 
-import edu.handong.csee.histudy.controller.form.ReportForm;
 import edu.handong.csee.histudy.domain.*;
 import edu.handong.csee.histudy.dto.ReportDto;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
 import edu.handong.csee.histudy.exception.ReportNotFoundException;
 import edu.handong.csee.histudy.exception.UserNotFoundException;
 import edu.handong.csee.histudy.repository.*;
+import edu.handong.csee.histudy.service.command.ReportCommand;
 import edu.handong.csee.histudy.util.ImagePathMapper;
 import java.util.List;
 import java.util.Map;
@@ -27,35 +27,33 @@ public class ReportService {
 
   private final ImagePathMapper imagePathMapper;
 
-  public ReportDto.ReportInfo createReport(ReportForm form, String email) {
+  public ReportDto.ReportInfo createReport(ReportCommand command, String email) {
     User user = userRepository.findUserByEmail(email).orElseThrow(UserNotFoundException::new);
     AcademicTerm currentTerm =
         academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
     StudyGroup studyGroup = studyGroupRepository.findByUserAndTerm(user, currentTerm).orElseThrow();
 
     List<User> participants =
-        form.getParticipants().stream()
+        command.participantIds().stream()
             .map(userRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .flatMap(Optional::stream)
             .toList();
 
     List<Course> courses =
-        form.getCourses().stream()
+        command.courseIds().stream()
             .map(courseRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .flatMap(Optional::stream)
             .toList();
 
     // parse image path to filename
     // /path/to/image.png -> image.png
-    List<String> imageFilenames = imagePathMapper.extractFilename(form.getImages());
+    List<String> imageFilenames = imagePathMapper.extractFilename(command.imageUrls());
 
     StudyReport report =
         StudyReport.builder()
-            .title(form.getTitle())
-            .content(form.getContent())
-            .totalMinutes(form.getTotalMinutes())
+            .title(command.title())
+            .content(command.content())
+            .totalMinutes(command.totalMinutes())
             .studyGroup(studyGroup)
             .participants(participants)
             .images(imageFilenames)
@@ -85,19 +83,17 @@ public class ReportService {
         .toList();
   }
 
-  public boolean updateReport(Long reportId, ReportForm form) {
+  public boolean updateReport(Long reportId, ReportCommand command) {
     List<User> participants =
-        form.getParticipants().stream()
+        command.participantIds().stream()
             .map(userRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .flatMap(Optional::stream)
             .toList();
 
     List<Course> courses =
-        form.getCourses().stream()
+        command.courseIds().stream()
             .map(courseRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .flatMap(Optional::stream)
             .toList();
 
     StudyReport targetReport =
@@ -105,11 +101,11 @@ public class ReportService {
 
     // parse image path to filename
     // /path/to/image.png -> image.png
-    List<String> imageFilenames = imagePathMapper.extractFilename(form.getImages());
+    List<String> imageFilenames = imagePathMapper.extractFilename(command.imageUrls());
     targetReport.update(
-        form.getTitle(),
-        form.getContent(),
-        form.getTotalMinutes(),
+        command.title(),
+        command.content(),
+        command.totalMinutes(),
         imageFilenames,
         participants,
         courses);

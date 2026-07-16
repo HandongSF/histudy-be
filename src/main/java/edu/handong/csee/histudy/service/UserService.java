@@ -1,12 +1,12 @@
 package edu.handong.csee.histudy.service;
 
-import edu.handong.csee.histudy.controller.form.ApplyForm;
 import edu.handong.csee.histudy.domain.*;
 import edu.handong.csee.histudy.dto.ApplyFormDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.*;
 import edu.handong.csee.histudy.repository.*;
 import edu.handong.csee.histudy.repository.StudyApplicantRepository;
+import edu.handong.csee.histudy.service.command.LegacyStudyApplicationCommand;
 import edu.handong.csee.histudy.service.command.SignUpCommand;
 import java.util.List;
 import java.util.Optional;
@@ -33,7 +33,7 @@ public class UserService {
     return userRepository.findUserByNameOrSidOrEmail(keyword.get());
   }
 
-  public ApplyFormDto apply(ApplyForm form, String email) {
+  public ApplyFormDto apply(LegacyStudyApplicationCommand command, String email) {
     AcademicTerm currentTerm =
         academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
     User user = userRepository.findUserByEmail(email).orElseThrow(UserNotFoundException::new);
@@ -41,12 +41,12 @@ public class UserService {
     removeFormHistoryIfExists(user, currentTerm);
 
     List<User> partners =
-        form.getFriendIds().stream()
+        command.friendStudentIds().stream()
             .map(sid -> userRepository.findUserBySid(sid).orElseThrow(UserNotFoundException::new))
             .toList();
 
     List<Course> courses =
-        form.getCourseIds().stream()
+        command.courseIds().stream()
             .map(id -> courseRepository.findById(id).orElseThrow(CourseNotFoundException::new))
             .toList();
 

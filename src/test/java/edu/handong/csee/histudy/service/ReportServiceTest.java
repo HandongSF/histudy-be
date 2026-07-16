@@ -2,7 +2,6 @@ package edu.handong.csee.histudy.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import edu.handong.csee.histudy.controller.form.ReportForm;
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
 import edu.handong.csee.histudy.domain.Role;
@@ -12,6 +11,7 @@ import edu.handong.csee.histudy.domain.StudyReport;
 import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.dto.ReportDto;
+import edu.handong.csee.histudy.service.command.ReportCommand;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeCourseRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyGroupRepository;
@@ -96,18 +96,17 @@ class ReportServiceTest {
     StudyApplicant applicant =
         StudyApplicant.of(currentTerm, savedMemberUser, List.of(), List.of(savedPrimaryCourse));
     studyGroupRepository.save(StudyGroup.of(1, currentTerm, List.of(applicant)));
-    ReportForm form =
-        ReportForm.builder()
-            .title("1주차")
-            .content("첫 모임")
-            .totalMinutes(90L)
-            .participants(List.of(savedParticipantUser.getUserId()))
-            .courses(List.of(savedPrimaryCourse.getCourseId()))
-            .images(List.of("https://histudy.handong.edu/images/reports/report1.png"))
-            .build();
+    ReportCommand command =
+        new ReportCommand(
+            "1주차",
+            "첫 모임",
+            90L,
+            List.of(savedParticipantUser.getUserId()),
+            List.of("https://histudy.handong.edu/images/reports/report1.png"),
+            List.of(savedPrimaryCourse.getCourseId()));
 
     // When
-    ReportDto.ReportInfo result = reportService.createReport(form, "member@histudy.com");
+    ReportDto.ReportInfo result = reportService.createReport(command, "member@histudy.com");
 
     // Then
     assertThat(studyReportRepository.findAll()).hasSize(1);
@@ -227,18 +226,17 @@ class ReportServiceTest {
                 .images(List.of("reports/one.png"))
                 .courses(List.of(savedPrimaryCourse))
                 .build());
-    ReportForm form =
-        ReportForm.builder()
-            .title("수정된 제목")
-            .content("수정된 내용")
-            .totalMinutes(120L)
-            .participants(List.of(savedMemberUser.getUserId()))
-            .courses(List.of(savedSecondaryCourse.getCourseId()))
-            .images(List.of("https://histudy.handong.edu/images/reports/two.png"))
-            .build();
+    ReportCommand command =
+        new ReportCommand(
+            "수정된 제목",
+            "수정된 내용",
+            120L,
+            List.of(savedMemberUser.getUserId()),
+            List.of("https://histudy.handong.edu/images/reports/two.png"),
+            List.of(savedSecondaryCourse.getCourseId()));
 
     // When
-    boolean updated = reportService.updateReport(savedReport.getStudyReportId(), form);
+    boolean updated = reportService.updateReport(savedReport.getStudyReportId(), command);
 
     // Then
     assertThat(updated).isTrue();
