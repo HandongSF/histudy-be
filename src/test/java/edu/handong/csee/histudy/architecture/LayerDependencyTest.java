@@ -17,6 +17,8 @@ class LayerDependencyTest {
   private static final Path CONTROLLER_SOURCE_DIRECTORY =
       MAIN_SOURCE_DIRECTORY.resolve("controller");
   private static final Path SERVICE_SOURCE_DIRECTORY = MAIN_SOURCE_DIRECTORY.resolve("service");
+  private static final Path MATCHING_DOMAIN_SOURCE_DIRECTORY =
+      MAIN_SOURCE_DIRECTORY.resolve("matching/domain");
   private static final String CONTROLLER_PACKAGE_PREFIX =
       "edu.handong.csee.histudy.controller.";
   private static final String REPOSITORY_PACKAGE_PREFIX =
@@ -54,6 +56,29 @@ class LayerDependencyTest {
 
     // Then
     assertThat(forbiddenDependencies).isEmpty();
+  }
+
+  @Test
+  void 매칭도메인은_Spring에_의존하지_않는다() throws IOException {
+    // Given
+    List<Path> matchingDomainSources;
+    try (Stream<Path> paths = Files.walk(MATCHING_DOMAIN_SOURCE_DIRECTORY)) {
+      matchingDomainSources =
+          paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+    }
+
+    // When
+    List<String> springDependencies =
+        matchingDomainSources.stream()
+            .flatMap(
+                source ->
+                    readLines(source)
+                        .filter(line -> isSourceCodeLine(line) && line.contains("org.springframework."))
+                        .map(line -> source + ": " + line))
+            .toList();
+
+    // Then
+    assertThat(springDependencies).isEmpty();
   }
 
   @Test
