@@ -36,15 +36,13 @@ public class ReportService {
     List<User> participants =
         command.participantIds().stream()
             .map(userRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .flatMap(Optional::stream)
             .toList();
 
     List<Course> courses =
         command.courseIds().stream()
             .map(courseRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .flatMap(Optional::stream)
             .toList();
 
     // parse image path to filename
@@ -89,15 +87,13 @@ public class ReportService {
     List<User> participants =
         command.participantIds().stream()
             .map(userRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .flatMap(Optional::stream)
             .toList();
 
     List<Course> courses =
         command.courseIds().stream()
             .map(courseRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .flatMap(Optional::stream)
             .toList();
 
     StudyReport targetReport =
