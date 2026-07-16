@@ -23,8 +23,7 @@ class LayerDependencyTest {
       "edu.handong.csee.histudy.repository.";
   private static final List<String> LEGACY_SERVICE_CONTROLLER_DEPENDENCIES =
       List.of(
-          "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerForm;",
-          "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerReorderForm;");
+          "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerForm;");
   private static final List<String> FORBIDDEN_DEPENDENCY_PREFIXES =
       List.of(
           "edu.handong.csee.histudy.controller.",

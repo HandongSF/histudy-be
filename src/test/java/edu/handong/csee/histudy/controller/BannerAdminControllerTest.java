@@ -114,7 +114,7 @@ class BannerAdminControllerTest {
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isOk());
 
-    verify(bannerService).reorderBanners(any(BannerReorderForm.class));
+    verify(bannerService).reorderBanners(List.of(2L, 1L));
   }
 
   @Test

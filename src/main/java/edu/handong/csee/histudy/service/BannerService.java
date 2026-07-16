@@ -4,7 +4,6 @@ import static edu.handong.csee.histudy.util.ImageDirectories.BANNER;
 import static org.springframework.util.ResourceUtils.isUrl;
 
 import edu.handong.csee.histudy.controller.form.BannerForm;
-import edu.handong.csee.histudy.controller.form.BannerReorderForm;
 import edu.handong.csee.histudy.domain.Banner;
 import edu.handong.csee.histudy.dto.BannerDto;
 import edu.handong.csee.histudy.exception.BannerNotFoundException;
@@ -24,7 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -127,9 +125,8 @@ public class BannerService {
     normalizeDisplayOrder();
   }
 
-  public void reorderBanners(BannerReorderForm form) {
-    validateFormIsNotNull(form);
-    List<Long> orderedIds = Optional.ofNullable(form.getOrderedIds()).orElse(List.of());
+  public void reorderBanners(List<Long> requestedOrder) {
+    List<Long> orderedIds = requestedOrder == null ? List.of() : requestedOrder;
     List<Banner> banners = bannerRepository.findAllByOrderByDisplayOrderAsc();
 
     if (banners.isEmpty()) {

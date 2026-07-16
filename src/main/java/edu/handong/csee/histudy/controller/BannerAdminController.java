@@ -49,7 +49,7 @@ public class BannerAdminController {
   public ResponseEntity<Void> reorderBanners(
       @RequestBody BannerReorderForm form, @RequestAttribute Claims claims) {
     requireAdmin(claims);
-    bannerService.reorderBanners(form);
+    bannerService.reorderBanners(form.getOrderedIds());
     return ResponseEntity.ok().build();
   }
 
