@@ -182,7 +182,7 @@ class AdminControllerTest {
     Claims claims = adminClaims("admin@test.com");
 
     AcademicTermForm form = new AcademicTermForm(2025, TermType.SPRING);
-    doNothing().when(academicTermService).createAcademicTerm(any(AcademicTermForm.class));
+    doNothing().when(academicTermService).createAcademicTerm(2025, TermType.SPRING);
 
     // When & Then
     mockMvc
@@ -193,7 +193,7 @@ class AdminControllerTest {
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isCreated());
 
-    verify(academicTermService).createAcademicTerm(any(AcademicTermForm.class));
+    verify(academicTermService).createAcademicTerm(2025, TermType.SPRING);
   }
 
   @Test
@@ -212,7 +212,7 @@ class AdminControllerTest {
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isForbidden());
 
-    verify(academicTermService, never()).createAcademicTerm(any());
+    verify(academicTermService, never()).createAcademicTerm(any(), any());
   }
 
   @Test
@@ -301,6 +301,6 @@ class AdminControllerTest {
                 .content(invalidJson))
         .andExpect(status().isBadRequest());
 
-    verify(academicTermService, never()).createAcademicTerm(any());
+    verify(academicTermService, never()).createAcademicTerm(any(), any());
   }
 }

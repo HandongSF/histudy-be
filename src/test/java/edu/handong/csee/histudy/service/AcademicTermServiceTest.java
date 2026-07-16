@@ -3,12 +3,12 @@ package edu.handong.csee.histudy.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import edu.handong.csee.histudy.controller.form.AcademicTermForm;
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.dto.AcademicTermDto;
 import edu.handong.csee.histudy.exception.AcademicTermNotFoundException;
 import edu.handong.csee.histudy.exception.DuplicateAcademicTermException;
+import edu.handong.csee.histudy.exception.MissingParameterException;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,6 @@ class AcademicTermServiceTest {
       AcademicTerm.builder().academicYear(2025).semester(TermType.SPRING).isCurrent(true).build();
   private final AcademicTerm fall2025Term =
       AcademicTerm.builder().academicYear(2025).semester(TermType.FALL).isCurrent(false).build();
-  private final AcademicTermForm fall2025Form = new AcademicTermForm(2025, TermType.FALL);
 
   private FakeAcademicTermRepository academicTermRepository;
   private AcademicTermService academicTermService;
@@ -56,7 +55,7 @@ class AcademicTermServiceTest {
     AcademicTerm existingCurrent = academicTermRepository.save(spring2025CurrentTerm);
 
     // When
-    academicTermService.createAcademicTerm(fall2025Form);
+    academicTermService.createAcademicTerm(2025, TermType.FALL);
 
     // Then
     assertThat(academicTermRepository.findAll()).hasSize(2);
@@ -75,8 +74,22 @@ class AcademicTermServiceTest {
     academicTermRepository.save(fall2025Term);
 
     // When Then
-    assertThatThrownBy(() -> academicTermService.createAcademicTerm(fall2025Form))
+    assertThatThrownBy(() -> academicTermService.createAcademicTerm(2025, TermType.FALL))
         .isInstanceOf(DuplicateAcademicTermException.class);
+  }
+
+  @Test
+  void 연도나_학기없이_학기를_추가하면_예외가_발생한다() {
+    // Given
+    Integer missingYear = null;
+    TermType missingSemester = null;
+
+    // When Then
+    assertThatThrownBy(
+            () -> academicTermService.createAcademicTerm(missingYear, TermType.FALL))
+        .isInstanceOf(MissingParameterException.class);
+    assertThatThrownBy(() -> academicTermService.createAcademicTerm(2025, missingSemester))
+        .isInstanceOf(MissingParameterException.class);
   }
 
   @Test

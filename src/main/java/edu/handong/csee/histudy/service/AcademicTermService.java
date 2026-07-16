@@ -2,11 +2,12 @@ package edu.handong.csee.histudy.service;
 
 import static edu.handong.csee.histudy.dto.AcademicTermDto.*;
 
-import edu.handong.csee.histudy.controller.form.AcademicTermForm;
 import edu.handong.csee.histudy.domain.AcademicTerm;
+import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.dto.AcademicTermDto;
 import edu.handong.csee.histudy.exception.AcademicTermNotFoundException;
 import edu.handong.csee.histudy.exception.DuplicateAcademicTermException;
+import edu.handong.csee.histudy.exception.MissingParameterException;
 import edu.handong.csee.histudy.repository.AcademicTermRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -17,21 +18,28 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AcademicTermService {
 
+  private static final String MESSAGE_MISSING_ACADEMIC_TERM =
+      "연도와 학기는 필수 입력값입니다.";
+
   private final AcademicTermRepository academicTermRepository;
 
   @Transactional
-  public void createAcademicTerm(AcademicTermForm form) {
+  public void createAcademicTerm(Integer year, TermType semester) {
+    if (year == null || semester == null) {
+      throw new MissingParameterException(MESSAGE_MISSING_ACADEMIC_TERM);
+    }
+
     academicTermRepository
-        .findByYearAndTerm(form.getYear(), form.getSemester())
+        .findByYearAndTerm(year, semester)
         .ifPresent(
             existing -> {
-              throw new DuplicateAcademicTermException(form.getYear(), form.getSemester());
+              throw new DuplicateAcademicTermException(year, semester);
             });
 
     AcademicTerm academicTerm =
         AcademicTerm.builder()
-            .academicYear(form.getYear())
-            .semester(form.getSemester())
+            .academicYear(year)
+            .semester(semester)
             .isCurrent(false)
             .build();
 

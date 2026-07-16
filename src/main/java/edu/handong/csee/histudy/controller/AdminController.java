@@ -123,7 +123,7 @@ public class AdminController {
   public ResponseEntity<Void> createAcademicTerm(
       @RequestBody AcademicTermForm form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      academicTermService.createAcademicTerm(form);
+      academicTermService.createAcademicTerm(form.getYear(), form.getSemester());
       return ResponseEntity.status(HttpStatus.CREATED).build();
     }
     throw new ForbiddenException();

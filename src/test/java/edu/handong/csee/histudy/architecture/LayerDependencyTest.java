@@ -16,8 +16,18 @@ class LayerDependencyTest {
       Path.of("src/main/java/edu/handong/csee/histudy");
   private static final Path CONTROLLER_SOURCE_DIRECTORY =
       MAIN_SOURCE_DIRECTORY.resolve("controller");
+  private static final Path SERVICE_SOURCE_DIRECTORY = MAIN_SOURCE_DIRECTORY.resolve("service");
+  private static final String CONTROLLER_PACKAGE_PREFIX =
+      "edu.handong.csee.histudy.controller.";
   private static final String REPOSITORY_PACKAGE_PREFIX =
       "edu.handong.csee.histudy.repository.";
+  private static final List<String> LEGACY_SERVICE_CONTROLLER_DEPENDENCIES =
+      List.of(
+          "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerForm;",
+          "BannerService.java: import edu.handong.csee.histudy.controller.form.BannerReorderForm;",
+          "ReportService.java: import edu.handong.csee.histudy.controller.form.ReportForm;",
+          "UserService.java: import edu.handong.csee.histudy.controller.form.ApplyForm;",
+          "UserService.java: import edu.handong.csee.histudy.controller.form.UserForm;");
   private static final List<String> FORBIDDEN_DEPENDENCY_PREFIXES =
       List.of(
           "edu.handong.csee.histudy.controller.",
@@ -73,6 +83,53 @@ class LayerDependencyTest {
 
     // Then
     assertThat(forbiddenDependencies).isEmpty();
+  }
+
+  @Test
+  void 서비스계층의_컨트롤러의존은_레거시기준선을_넘지않는다() throws IOException {
+    // Given When
+    List<String> controllerDependencies =
+        collectControllerDependencies(SERVICE_SOURCE_DIRECTORY);
+
+    // Then
+    assertThat(controllerDependencies)
+        .containsExactlyInAnyOrderElementsOf(LEGACY_SERVICE_CONTROLLER_DEPENDENCIES);
+  }
+
+  @Test
+  void 같은이름의_서비스소스가_서로다른패키지에있어도_컨트롤러의존을_모두탐지한다(
+      @TempDir Path serviceDirectory) throws IOException {
+    // Given
+    String controllerImport =
+        "import edu.handong.csee.histudy.controller.form.AcademicTermForm;";
+    Path firstSource = serviceDirectory.resolve("first/SameService.java");
+    Path secondSource = serviceDirectory.resolve("second/SameService.java");
+    Files.createDirectories(firstSource.getParent());
+    Files.createDirectories(secondSource.getParent());
+    Files.writeString(firstSource, controllerImport);
+    Files.writeString(secondSource, controllerImport);
+
+    // When
+    List<String> controllerDependencies = collectControllerDependencies(serviceDirectory);
+
+    // Then
+    assertThat(controllerDependencies)
+        .containsExactlyInAnyOrder(
+            "first/SameService.java: " + controllerImport,
+            "second/SameService.java: " + controllerImport);
+  }
+
+  @Test
+  void java확장자와_같은이름의_디렉터리는_서비스소스로_탐지하지않는다(
+      @TempDir Path serviceDirectory) throws IOException {
+    // Given
+    Files.createDirectories(serviceDirectory.resolve("NotSource.java"));
+
+    // When
+    List<String> controllerDependencies = collectControllerDependencies(serviceDirectory);
+
+    // Then
+    assertThat(controllerDependencies).isEmpty();
   }
 
   @Test
@@ -140,6 +197,36 @@ class LayerDependencyTest {
     }
   }
 
+  private static List<String> collectControllerDependencies(Path serviceSourceDirectory)
+      throws IOException {
+    List<Path> serviceSources;
+    try (Stream<Path> paths = Files.walk(serviceSourceDirectory)) {
+      serviceSources =
+          paths
+              .filter(Files::isRegularFile)
+              .filter(path -> path.toString().endsWith(".java"))
+              .sorted()
+              .toList();
+    }
+
+    return serviceSources.stream()
+        .flatMap(
+            source ->
+                readLines(source)
+                    .filter(LayerDependencyTest::isControllerDependency)
+                    .map(
+                        line ->
+                            relativeSourcePath(serviceSourceDirectory, source) + ": " + line))
+        .toList();
+  }
+
+  private static String relativeSourcePath(Path sourceDirectory, Path source) {
+    return sourceDirectory
+        .relativize(source)
+        .toString()
+        .replace(source.getFileSystem().getSeparator(), "/");
+  }
+
   private static boolean isForbiddenDependency(String line) {
     return isSourceCodeLine(line)
         && FORBIDDEN_DEPENDENCY_PREFIXES.stream().anyMatch(line::contains);
@@ -147,6 +234,10 @@ class LayerDependencyTest {
 
   private static boolean isRepositoryDependency(String line) {
     return isSourceCodeLine(line) && line.contains(REPOSITORY_PACKAGE_PREFIX);
+  }
+
+  private static boolean isControllerDependency(String line) {
+    return isSourceCodeLine(line) && line.contains(CONTROLLER_PACKAGE_PREFIX);
   }
 
   private static boolean isSourceCodeLine(String line) {
