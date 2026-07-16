@@ -37,7 +37,7 @@ public void createAcademicTerm(Integer year, TermType semester)
 변경을 만들지 않는다. 별도의 Command 타입은 추가하지 않는다. 서비스 입력 표현은 다음
 기준을 일관되게 적용한다.
 
-- HTTP form과 API DTO는 컨트롤러 경계 밖으로 전달하지 않는다.
+- HTTP 요청 바인딩 form은 컨트롤러 경계 밖으로 전달하지 않는다.
 - 필수 입력이 한두 개이고 각 값의 의미가 메서드 이름과 타입으로 명확하면 개별 인자를
   사용한다.
 - 입력이 세 개 이상이거나 값들이 함께 전달되어야 하나의 유스케이스 의미를 이루면
