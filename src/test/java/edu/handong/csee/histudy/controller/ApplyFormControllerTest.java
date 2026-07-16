@@ -2,8 +2,10 @@ package edu.handong.csee.histudy.controller;
 
 import static edu.handong.csee.histudy.support.AuthClaimsFactory.memberClaims;
 import static edu.handong.csee.histudy.support.AuthClaimsFactory.userClaims;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -18,10 +20,12 @@ import edu.handong.csee.histudy.interceptor.AuthenticationInterceptor;
 import edu.handong.csee.histudy.service.DiscordService;
 import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.UserService;
+import edu.handong.csee.histudy.service.command.LegacyStudyApplicationCommand;
 import io.jsonwebtoken.Claims;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -56,15 +60,18 @@ class ApplyFormControllerTest {
   }
 
   @Test
-  void 사용자가_스터디신청시_성공_V1() throws Exception {
+  void 사용자가_V1으로_스터디를_신청하면_레거시명령과_인증이메일을_서비스에_전달한다() throws Exception {
+    // Given
     Claims claims = userClaims("user@test.com");
 
     ApplyForm form =
         ApplyForm.builder().friendIds(List.of("22500101")).courseIds(List.of(1L)).build();
 
     ApplyFormDto result = mock(ApplyFormDto.class);
-    when(userService.apply(any(ApplyForm.class), anyString())).thenReturn(result);
+    when(userService.apply(any(LegacyStudyApplicationCommand.class), anyString()))
+        .thenReturn(result);
 
+    // When
     mockMvc
         .perform(
             post("/api/forms")
@@ -73,6 +80,13 @@ class ApplyFormControllerTest {
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isOk())
         .andExpect(content().contentType("application/json"));
+
+    // Then
+    ArgumentCaptor<LegacyStudyApplicationCommand> commandCaptor =
+        ArgumentCaptor.forClass(LegacyStudyApplicationCommand.class);
+    verify(userService).apply(commandCaptor.capture(), eq("user@test.com"));
+    assertThat(commandCaptor.getValue())
+        .isEqualTo(new LegacyStudyApplicationCommand(List.of("22500101"), List.of(1L)));
   }
 
   @Test
