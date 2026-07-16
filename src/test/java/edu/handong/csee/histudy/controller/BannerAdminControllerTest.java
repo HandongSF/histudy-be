@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.handong.csee.histudy.controller.form.BannerReorderForm;
@@ -14,10 +15,13 @@ import edu.handong.csee.histudy.interceptor.AuthenticationInterceptor;
 import edu.handong.csee.histudy.service.BannerService;
 import edu.handong.csee.histudy.service.DiscordService;
 import edu.handong.csee.histudy.service.JwtService;
+import edu.handong.csee.histudy.service.command.BannerCommand;
 import io.jsonwebtoken.Claims;
+import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -81,7 +85,7 @@ class BannerAdminControllerTest {
         new MockMultipartFile("image", "banner.png", "image/png", "banner".getBytes());
     BannerDto.AdminBannerInfo info = createAdminBannerInfo(1L);
 
-    when(bannerService.createBanner(any())).thenReturn(info);
+    when(bannerService.createBanner(any(BannerCommand.class))).thenReturn(info);
 
     // When & Then
     mockMvc
@@ -95,6 +99,77 @@ class BannerAdminControllerTest {
         .andExpect(status().isCreated())
         .andExpect(content().contentType("application/json"))
         .andExpect(jsonPath("$.id").value(1L));
+
+    ArgumentCaptor<BannerCommand> commandCaptor = ArgumentCaptor.forClass(BannerCommand.class);
+    verify(bannerService).createBanner(commandCaptor.capture());
+    BannerCommand command = commandCaptor.getValue();
+    assertThat(command.label()).isEqualTo("Main Banner");
+    assertThat(command.redirectUrl()).isEqualTo("https://example.com");
+    assertThat(command.active()).isTrue();
+    assertThat(command.image().originalFilename()).isEqualTo("banner.png");
+    assertThat(command.image().contentType()).isEqualTo("image/png");
+    assertThat(command.image().content()).isEqualTo("banner".getBytes());
+  }
+
+  @Test
+  void 빈_이미지는_서비스_명령에서_이미지없음으로_변환한다() throws Exception {
+    // Given
+    Claims claims = mock(Claims.class);
+    when(claims.get("rol", String.class)).thenReturn(Role.ADMIN.name());
+
+    MockMultipartFile emptyImage =
+        new MockMultipartFile("image", "banner.png", "image/png", new byte[0]);
+    when(bannerService.createBanner(any(BannerCommand.class))).thenReturn(createAdminBannerInfo(1L));
+
+    // When
+    mockMvc
+        .perform(
+            multipart("/api/admin/banners")
+                .file(emptyImage)
+                .param("label", "Main Banner")
+                .requestAttr("claims", claims))
+        .andExpect(status().isCreated());
+
+    // Then
+    ArgumentCaptor<BannerCommand> commandCaptor = ArgumentCaptor.forClass(BannerCommand.class);
+    verify(bannerService).createBanner(commandCaptor.capture());
+    assertThat(commandCaptor.getValue().image()).isNull();
+  }
+
+  @Test
+  void 제한크기를_초과한_이미지는_내용을_읽기전에_거부한다() throws Exception {
+    // Given
+    Claims claims = mock(Claims.class);
+    when(claims.get("rol", String.class)).thenReturn(Role.ADMIN.name());
+
+    MockMultipartFile oversizedImage =
+        new MockMultipartFile("image", "banner.png", "image/png", new byte[0]) {
+          @Override
+          public boolean isEmpty() {
+            return false;
+          }
+
+          @Override
+          public long getSize() {
+            return 5L * 1024 * 1024 + 1;
+          }
+
+          @Override
+          public byte[] getBytes() throws IOException {
+            throw new AssertionError("oversized image content should not be read");
+          }
+        };
+
+    // When Then
+    mockMvc
+        .perform(
+            multipart("/api/admin/banners")
+                .file(oversizedImage)
+                .param("label", "Main Banner")
+                .requestAttr("claims", claims))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(bannerService);
   }
 
   @Test
@@ -146,7 +221,7 @@ class BannerAdminControllerTest {
         new MockMultipartFile("image", "banner2.png", "image/png", "banner-2".getBytes());
     BannerDto.AdminBannerInfo info = createAdminBannerInfo(2L);
 
-    when(bannerService.updateBanner(eq(2L), any())).thenReturn(info);
+    when(bannerService.updateBanner(eq(2L), any(BannerCommand.class))).thenReturn(info);
 
     MockHttpServletRequestBuilder requestBuilder =
         multipart("/api/admin/banners/{bannerId}", 2L)
@@ -165,6 +240,16 @@ class BannerAdminControllerTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType("application/json"))
         .andExpect(jsonPath("$.id").value(2L));
+
+    ArgumentCaptor<BannerCommand> commandCaptor = ArgumentCaptor.forClass(BannerCommand.class);
+    verify(bannerService).updateBanner(eq(2L), commandCaptor.capture());
+    BannerCommand command = commandCaptor.getValue();
+    assertThat(command.label()).isEqualTo("Updated Banner");
+    assertThat(command.redirectUrl()).isNull();
+    assertThat(command.active()).isNull();
+    assertThat(command.image().originalFilename()).isEqualTo("banner2.png");
+    assertThat(command.image().contentType()).isEqualTo("image/png");
+    assertThat(command.image().content()).isEqualTo("banner-2".getBytes());
   }
 
   @Test
