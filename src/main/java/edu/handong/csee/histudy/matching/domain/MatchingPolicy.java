@@ -10,11 +10,11 @@ import edu.handong.csee.histudy.domain.StudyPartnerRequest;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.util.DFS;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -27,6 +27,8 @@ public class MatchingPolicy {
 
   public List<StudyGroup> match(
       List<StudyApplicant> applicants, AcademicTerm academicTerm, int firstGroupTag) {
+    Objects.requireNonNull(applicants, "applicants must not be null");
+    Objects.requireNonNull(academicTerm, "academicTerm must not be null");
     if (applicants.isEmpty()) {
       return List.of();
     }
@@ -94,48 +96,41 @@ public class MatchingPolicy {
               .add(preference.getApplicant());
         });
 
-    return priorityCourseMap.values().stream()
-        .flatMap(courseMap -> courseMap.values().stream())
-        .map(
-            bucket ->
-                bucket.stream().filter(applicant -> !applicant.hasStudyGroup()).toList())
-        .map(
-            remaining ->
-                groupBySize(
-                    remaining,
-                    nextGroupTag,
-                    academicTerm,
-                    0,
-                    MIN_COURSE_GROUP_SIZE,
-                    MAX_COURSE_GROUP_SIZE))
-        .flatMap(Collection::stream)
-        .toList();
+    List<StudyGroup> groups = new ArrayList<>();
+    for (Map<Course, List<StudyApplicant>> courseMap : priorityCourseMap.values()) {
+      for (List<StudyApplicant> bucket : courseMap.values()) {
+        List<StudyApplicant> remaining =
+            bucket.stream().filter(applicant -> !applicant.hasStudyGroup()).toList();
+        groups.addAll(
+            groupBySize(
+                remaining,
+                nextGroupTag,
+                academicTerm,
+                MIN_COURSE_GROUP_SIZE,
+                MAX_COURSE_GROUP_SIZE));
+      }
+    }
+    return groups;
   }
 
   private List<StudyGroup> groupBySize(
       List<StudyApplicant> applicants,
       AtomicInteger nextGroupTag,
       AcademicTerm academicTerm,
-      int startIndex,
       int minSize,
       int maxSize) {
-    int remaining = applicants.size() - startIndex;
-    if (remaining < minSize) {
-      return List.of();
-    }
-
-    int endIndex = startIndex + Math.min(remaining, maxSize);
-    StudyGroup group =
-        StudyGroup.of(
-            nextGroupTag.getAndIncrement(),
-            academicTerm,
-            applicants.subList(startIndex, endIndex));
-
     List<StudyGroup> groups = new ArrayList<>();
-    groups.add(group);
-    groups.addAll(
-        groupBySize(
-            applicants, nextGroupTag, academicTerm, endIndex, minSize, maxSize));
+    int startIndex = 0;
+    while (applicants.size() - startIndex >= minSize) {
+      int remaining = applicants.size() - startIndex;
+      int endIndex = startIndex + Math.min(remaining, maxSize);
+      groups.add(
+          StudyGroup.of(
+              nextGroupTag.getAndIncrement(),
+              academicTerm,
+              applicants.subList(startIndex, endIndex)));
+      startIndex = endIndex;
+    }
     return groups;
   }
 }

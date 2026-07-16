@@ -1,6 +1,7 @@
 package edu.handong.csee.histudy.matching.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
@@ -93,6 +94,50 @@ class MatchingPolicyTest {
 
     // Then
     assertThat(result).isEmpty();
+  }
+
+  @Test
+  void 신청자목록이_null이면_명시적인_예외가_발생한다() {
+    // Given
+
+    // When Then
+    assertThatThrownBy(() -> matchingPolicy.match(null, currentTerm, 1))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("applicants must not be null");
+  }
+
+  @Test
+  void 과목이_같은_신청자가_여섯명이면_다섯명을_배정하고_한명은_남긴다() {
+    // Given
+    List<StudyApplicant> applicants = createApplicants(6);
+
+    // When
+    List<StudyGroup> result = matchingPolicy.match(applicants, currentTerm, 1);
+
+    // Then
+    assertThat(result).singleElement().satisfies(group -> assertThat(group.getMembers()).hasSize(5));
+    assertThat(applicants).filteredOn(applicant -> !applicant.hasStudyGroup()).hasSize(1);
+  }
+
+  @Test
+  void 과목이_같은_신청자가_일곱명이면_다섯명을_배정하고_두명은_남긴다() {
+    // Given
+    List<StudyApplicant> applicants = createApplicants(7);
+
+    // When
+    List<StudyGroup> result = matchingPolicy.match(applicants, currentTerm, 1);
+
+    // Then
+    assertThat(result).singleElement().satisfies(group -> assertThat(group.getMembers()).hasSize(5));
+    assertThat(applicants).filteredOn(applicant -> !applicant.hasStudyGroup()).hasSize(2);
+  }
+
+  private List<StudyApplicant> createApplicants(int count) {
+    List<StudyApplicant> applicants = new ArrayList<>();
+    for (int sequence = 1; sequence <= count; sequence++) {
+      applicants.add(createApplicant(sequence, primaryCourse));
+    }
+    return applicants;
   }
 
   private StudyApplicant createApplicant(int sequence, Course course) {
