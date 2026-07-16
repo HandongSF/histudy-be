@@ -2,13 +2,14 @@ package edu.handong.csee.histudy.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
 import edu.handong.csee.histudy.domain.Role;
 import edu.handong.csee.histudy.domain.StudyApplicant;
 import edu.handong.csee.histudy.domain.StudyGroup;
-import edu.handong.csee.histudy.domain.StudyPartnerRequest;
 import edu.handong.csee.histudy.domain.StudyReport;
 import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.domain.User;
@@ -18,6 +19,7 @@ import edu.handong.csee.histudy.dto.TeamRankDto;
 import edu.handong.csee.histudy.dto.TeamReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
+import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyGroupRepository;
@@ -26,7 +28,6 @@ import edu.handong.csee.histudy.service.repository.fake.FakeUserRepository;
 import edu.handong.csee.histudy.util.ImagePathMapper;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -36,7 +37,6 @@ class TeamServiceTest {
   private final AcademicTerm currentTerm =
       AcademicTerm.builder().academicYear(2025).semester(TermType.SPRING).isCurrent(true).build();
   private final Course commonCourse = createCourse(1L, "자료구조", "CSEE201", "Kim", currentTerm);
-  private final Course secondaryCourse = createCourse(2L, "운영체제", "CSEE301", "Lee", currentTerm);
   private final User memberUser =
       User.builder()
           .sub("sub-1")
@@ -83,6 +83,7 @@ class TeamServiceTest {
   private FakeAcademicTermRepository academicTermRepository;
   private FakeStudyApplicationRepository studyApplicantRepository;
   private FakeStudyReportRepository studyReportRepository;
+  private ImagePathMapper imagePathMapper;
   private TeamService teamService;
 
   @BeforeEach
@@ -92,9 +93,12 @@ class TeamServiceTest {
     academicTermRepository = new FakeAcademicTermRepository();
     studyApplicantRepository = new FakeStudyApplicationRepository();
     studyReportRepository = new FakeStudyReportRepository();
-    ImagePathMapper imagePathMapper = new ImagePathMapper();
+    imagePathMapper = new ImagePathMapper();
     ReflectionTestUtils.setField(imagePathMapper, "origin", "https://histudy.handong.edu");
     ReflectionTestUtils.setField(imagePathMapper, "imageBasePath", "/images");
+    MatchingApplicationService matchingApplicationService =
+        new MatchingApplicationService(
+            academicTermRepository, studyApplicantRepository, studyGroupRepository);
     teamService =
         new TeamService(
             studyGroupRepository,
@@ -102,144 +106,30 @@ class TeamServiceTest {
             academicTermRepository,
             studyApplicantRepository,
             studyReportRepository,
-            imagePathMapper);
+            imagePathMapper,
+            matchingApplicationService);
   }
 
   @Test
-  void 그룹을_자동_배정하면_친구_우선과_과목_우선_규칙으로_배정한다() {
+  void 그룹을_자동_배정하면_매칭애플리케이션서비스에_위임한다() {
     // Given
-    academicTermRepository.save(currentTerm);
-    Course leftoverCourse = secondaryCourse;
-
-    User friendOne =
-        userRepository.save(
-            User.builder()
-                .sub("sub-1")
-                .sid("22230001")
-                .email("friend1@histudy.com")
-                .name("Friend1")
-                .role(Role.USER)
-                .build());
-    User friendTwo =
-        userRepository.save(
-            User.builder()
-                .sub("sub-2")
-                .sid("22230002")
-                .email("friend2@histudy.com")
-                .name("Friend2")
-                .role(Role.USER)
-                .build());
-    User courseOne =
-        userRepository.save(
-            User.builder()
-                .sub("sub-3")
-                .sid("22230003")
-                .email("course1@histudy.com")
-                .name("Course1")
-                .role(Role.USER)
-                .build());
-    User courseTwo =
-        userRepository.save(
-            User.builder()
-                .sub("sub-4")
-                .sid("22230004")
-                .email("course2@histudy.com")
-                .name("Course2")
-                .role(Role.USER)
-                .build());
-    User courseThree =
-        userRepository.save(
-            User.builder()
-                .sub("sub-5")
-                .sid("22230005")
-                .email("course3@histudy.com")
-                .name("Course3")
-                .role(Role.USER)
-                .build());
-    User leftoverOne =
-        userRepository.save(
-            User.builder()
-                .sub("sub-6")
-                .sid("22230006")
-                .email("left1@histudy.com")
-                .name("Left1")
-                .role(Role.USER)
-                .build());
-    User leftoverTwo =
-        userRepository.save(
-            User.builder()
-                .sub("sub-7")
-                .sid("22230007")
-                .email("left2@histudy.com")
-                .name("Left2")
-                .role(Role.USER)
-                .build());
-
-    StudyApplicant friendOneApplicant =
-        StudyApplicant.of(currentTerm, friendOne, List.of(friendTwo), List.of(commonCourse));
-    StudyApplicant friendTwoApplicant =
-        StudyApplicant.of(currentTerm, friendTwo, List.of(friendOne), List.of(commonCourse));
-    friendOneApplicant.changeStatusIfReceivedBy(friendTwo, StudyPartnerRequest::accept);
-    friendTwoApplicant.changeStatusIfReceivedBy(friendOne, StudyPartnerRequest::accept);
-
-    StudyApplicant courseOneApplicant =
-        StudyApplicant.of(currentTerm, courseOne, List.of(), List.of(commonCourse));
-    StudyApplicant courseTwoApplicant =
-        StudyApplicant.of(currentTerm, courseTwo, List.of(), List.of(commonCourse));
-    StudyApplicant courseThreeApplicant =
-        StudyApplicant.of(currentTerm, courseThree, List.of(), List.of(commonCourse));
-    StudyApplicant leftoverOneApplicant =
-        StudyApplicant.of(currentTerm, leftoverOne, List.of(), List.of(leftoverCourse));
-    StudyApplicant leftoverTwoApplicant =
-        StudyApplicant.of(currentTerm, leftoverTwo, List.of(), List.of(leftoverCourse));
-
-    studyApplicantRepository.saveAll(
-        List.of(
-            friendOneApplicant,
-            friendTwoApplicant,
-            courseOneApplicant,
-            courseTwoApplicant,
-            courseThreeApplicant,
-            leftoverOneApplicant,
-            leftoverTwoApplicant));
+    MatchingApplicationService matchingApplicationService =
+        mock(MatchingApplicationService.class);
+    TeamService facade =
+        new TeamService(
+            studyGroupRepository,
+            userRepository,
+            academicTermRepository,
+            studyApplicantRepository,
+            studyReportRepository,
+            imagePathMapper,
+            matchingApplicationService);
 
     // When
-    teamService.matchTeam();
+    facade.matchTeam();
 
     // Then
-    List<StudyGroup> createdGroups = studyGroupRepository.findAllByAcademicTerm(currentTerm);
-    assertThat(createdGroups).hasSize(2);
-    assertThat(createdGroups)
-        .extracting(group -> group.getMembers().size())
-        .containsExactlyInAnyOrder(2, 3);
-    StudyGroup friendGroup =
-        createdGroups.stream()
-            .filter(
-                group ->
-                    group.getMembers().stream()
-                        .anyMatch(
-                            applicant ->
-                                applicant.getUser().getEmail().equals(friendOne.getEmail())))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("friendOne should belong to a matched group"));
-    assertThat(friendGroup.getMembers())
-        .extracting(applicant -> applicant.getUser().getEmail())
-        .contains(friendTwo.getEmail());
-    assertThat(createdGroups)
-        .anySatisfy(
-            group ->
-                assertThat(
-                        group.getMembers().stream()
-                            .map(applicant -> applicant.getUser().getEmail())
-                            .collect(java.util.stream.Collectors.toSet()))
-                    .containsAll(
-                        Set.of(
-                            courseOne.getEmail(),
-                            courseTwo.getEmail(),
-                            courseThree.getEmail())));
-    assertThat(studyApplicantRepository.findUnassignedApplicants(currentTerm))
-        .extracting(applicant -> applicant.getUser().getEmail())
-        .containsExactlyInAnyOrder("left1@histudy.com", "left2@histudy.com");
+    verify(matchingApplicationService).match();
   }
 
   @Test
@@ -407,15 +297,6 @@ class TeamServiceTest {
     assertThat(result.getReports())
         .extracting(ReportDto.ReportBasic::getTitle)
         .containsExactly("2주차", "1주차");
-  }
-
-  @Test
-  void 현재_학기_없이_그룹을_자동_배정하면_예외가_발생한다() {
-    // Given
-
-    // When Then
-    assertThatThrownBy(() -> teamService.matchTeam())
-        .isInstanceOf(NoCurrentTermFoundException.class);
   }
 
   @Test

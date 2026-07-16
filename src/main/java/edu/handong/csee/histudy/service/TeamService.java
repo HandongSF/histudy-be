@@ -4,7 +4,7 @@ import edu.handong.csee.histudy.domain.*;
 import edu.handong.csee.histudy.dto.*;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
 import edu.handong.csee.histudy.exception.UserNotFoundException;
-import edu.handong.csee.histudy.matching.domain.MatchingPolicy;
+import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
 import edu.handong.csee.histudy.repository.*;
 import edu.handong.csee.histudy.repository.StudyApplicantRepository;
 import edu.handong.csee.histudy.util.ImagePathMapper;
@@ -26,7 +26,7 @@ public class TeamService {
   private final StudyReportRepository studyReportRepository;
 
   private final ImagePathMapper imagePathMapper;
-  private final MatchingPolicy matchingPolicy = new MatchingPolicy();
+  private final MatchingApplicationService matchingApplicationService;
 
   public List<TeamDto> getTeams(String email) {
     AcademicTerm currentTerm =
@@ -124,20 +124,6 @@ public class TeamService {
   }
 
   public void matchTeam() {
-    AcademicTerm current =
-        academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
-    List<StudyApplicant> allApplicants = studyApplicantRepository.findUnassignedApplicants(current);
-
-    if (allApplicants.isEmpty()) {
-      return;
-    }
-
-    int latestGroupTag = studyGroupRepository.countMaxTag(current).orElse(0);
-    List<StudyGroup> allMatchedGroups =
-        matchingPolicy.match(allApplicants, current, latestGroupTag + 1);
-
-    if (!allMatchedGroups.isEmpty()) {
-      studyGroupRepository.saveAll(allMatchedGroups);
-    }
+    matchingApplicationService.match();
   }
 }
