@@ -16,6 +16,7 @@ import edu.handong.csee.histudy.dto.TeamDto;
 import edu.handong.csee.histudy.dto.TeamReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.interceptor.AuthenticationInterceptor;
+import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
 import edu.handong.csee.histudy.service.AcademicTermService;
 import edu.handong.csee.histudy.service.DiscordService;
 import edu.handong.csee.histudy.service.JwtService;
@@ -44,6 +45,8 @@ class AdminControllerTest {
 
   @MockitoBean private TeamService teamService;
 
+  @MockitoBean private MatchingApplicationService matchingApplicationService;
+
   @MockitoBean private UserService userService;
 
   @MockitoBean private AcademicTermService academicTermService;
@@ -58,7 +61,11 @@ class AdminControllerTest {
 
     mockMvc =
         MockMvcBuilders.standaloneSetup(
-                new AdminController(teamService, userService, academicTermService))
+                new AdminController(
+                    teamService,
+                    userService,
+                    academicTermService,
+                    matchingApplicationService))
             .setControllerAdvice(new ExceptionController(discordService))
             .addInterceptors(authenticationInterceptor)
             .build();
@@ -107,11 +114,26 @@ class AdminControllerTest {
   void 관리자가_그룹매칭실행시_성공() throws Exception {
     Claims claims = adminClaims("admin@test.com");
 
-    doNothing().when(teamService).matchTeam();
+    doNothing().when(matchingApplicationService).match();
 
     mockMvc
         .perform(post("/api/admin/team-match").requestAttr("claims", claims))
         .andExpect(status().isCreated());
+
+    verify(matchingApplicationService).match();
+  }
+
+  @Test
+  void 일반유저가_그룹매칭실행시_실패() throws Exception {
+    // Given
+    Claims claims = userClaims("user@test.com");
+
+    // When Then
+    mockMvc
+        .perform(post("/api/admin/team-match").requestAttr("claims", claims))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(matchingApplicationService);
   }
 
   @Test
