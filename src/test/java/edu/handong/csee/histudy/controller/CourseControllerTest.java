@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.handong.csee.histudy.dto.CourseDto;
 import edu.handong.csee.histudy.dto.CourseIdDto;
+import edu.handong.csee.histudy.exception.CourseInUseException;
+import edu.handong.csee.histudy.exception.CourseNotFoundException;
 import edu.handong.csee.histudy.interceptor.AuthenticationInterceptor;
 import edu.handong.csee.histudy.service.CourseService;
 import edu.handong.csee.histudy.service.DiscordService;
@@ -94,6 +96,57 @@ class CourseControllerTest {
                 .content(objectMapper.writeValueAsString(dto)))
         .andExpect(status().isOk())
         .andExpect(content().string("1"));
+  }
+
+  @Test
+  void 관리자가_현재학기_강의삭제시_본문없이_성공한다() throws Exception {
+    // Given
+    Claims claims = adminClaims("admin@test.com");
+
+    // When Then
+    mockMvc
+        .perform(delete("/api/courses/{courseId}", 1L).requestAttr("claims", claims))
+        .andExpect(status().isNoContent())
+        .andExpect(content().string(""));
+    verify(courseService).deleteCurrentCourse(1L);
+  }
+
+  @Test
+  void 권한없는사용자가_현재학기_강의삭제시_실패한다() throws Exception {
+    // Given
+    Claims claims = userClaims("user@test.com");
+
+    // When Then
+    mockMvc
+        .perform(delete("/api/courses/{courseId}", 1L).requestAttr("claims", claims))
+        .andExpect(status().isForbidden());
+    verify(courseService, never()).deleteCurrentCourse(anyLong());
+  }
+
+  @Test
+  void 없는_강의삭제시_찾을수없음으로_응답한다() throws Exception {
+    // Given
+    Claims claims = adminClaims("admin@test.com");
+    doThrow(new CourseNotFoundException()).when(courseService).deleteCurrentCourse(1L);
+
+    // When Then
+    mockMvc
+        .perform(delete("/api/courses/{courseId}", 1L).requestAttr("claims", claims))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.message").value("해당 강의를 찾을 수 없습니다."));
+  }
+
+  @Test
+  void 사용중인_강의삭제시_충돌로_응답한다() throws Exception {
+    // Given
+    Claims claims = adminClaims("admin@test.com");
+    doThrow(new CourseInUseException()).when(courseService).deleteCurrentCourse(1L);
+
+    // When Then
+    mockMvc
+        .perform(delete("/api/courses/{courseId}", 1L).requestAttr("claims", claims))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.message").value("사용 중인 강의는 삭제할 수 없습니다."));
   }
 
   @Test
