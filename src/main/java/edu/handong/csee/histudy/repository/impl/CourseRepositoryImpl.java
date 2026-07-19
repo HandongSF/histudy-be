@@ -35,6 +35,13 @@ public class CourseRepositoryImpl implements CourseRepository {
   }
 
   @Override
+  public boolean hasReferences(Long courseId) {
+    return repository.countPreferredCourseReferences(courseId) > 0
+        || repository.countGroupCourseReferences(courseId) > 0
+        || repository.countStudyCourseReferences(courseId) > 0;
+  }
+
+  @Override
   public void deleteById(Long id) {
     repository.deleteById(id);
   }

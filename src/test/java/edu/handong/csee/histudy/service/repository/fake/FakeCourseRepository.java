@@ -4,14 +4,17 @@ import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
 import edu.handong.csee.histudy.repository.CourseRepository;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class FakeCourseRepository implements CourseRepository {
 
   private final List<Course> store = new ArrayList<>();
+  private final Set<Long> referencedCourseIds = new HashSet<>();
   private Long sequence = 1L;
 
   @Override
@@ -45,6 +48,11 @@ public class FakeCourseRepository implements CourseRepository {
   }
 
   @Override
+  public boolean hasReferences(Long courseId) {
+    return referencedCourseIds.contains(courseId);
+  }
+
+  @Override
   public void deleteById(Long id) {
     store.removeIf(c -> c.getCourseId().equals(id));
   }
@@ -61,5 +69,9 @@ public class FakeCourseRepository implements CourseRepository {
 
   public List<Course> findAll() {
     return new ArrayList<>(store);
+  }
+
+  public void markReferenced(Long courseId) {
+    referencedCourseIds.add(courseId);
   }
 }
