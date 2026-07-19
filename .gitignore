@@ -43,6 +43,7 @@ htmlReport/
 application-*.yml
 application-*.properties
 .claude/
+.worktrees/
 *.sql
 .DS_Store
 *.log
