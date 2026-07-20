@@ -14,6 +14,8 @@ public interface CourseRepository {
 
   boolean existsById(Long id);
 
+  boolean hasReferences(Long courseId);
+
   void deleteById(Long id);
 
   void deleteAllByAcademicTerm(AcademicTerm academicTerm);

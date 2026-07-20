@@ -12,6 +12,8 @@ import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.dto.CourseDto;
 import edu.handong.csee.histudy.dto.CourseIdDto;
+import edu.handong.csee.histudy.exception.CourseInUseException;
+import edu.handong.csee.histudy.exception.CourseNotFoundException;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
 import edu.handong.csee.histudy.exception.StudyGroupNotFoundException;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
@@ -190,5 +192,61 @@ class CourseServiceTest {
     // Then
     assertThat(result).isEqualTo(1);
     assertThat(courseRepository.findAll()).isEmpty();
+  }
+
+  @Test
+  void 현재_학기_미사용_과목을_삭제하면_과목이_제거된다() {
+    // Given
+    Course savedCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);
+
+    // When
+    courseService.deleteCurrentCourse(savedCourse.getCourseId());
+
+    // Then
+    assertThat(courseRepository.findAll()).isEmpty();
+  }
+
+  @Test
+  void 없는_과목을_삭제하면_예외가_발생한다() {
+    // Given
+    // When Then
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(999L))
+        .isInstanceOf(CourseNotFoundException.class);
+  }
+
+  @Test
+  void 과거_학기_과목을_삭제하면_예외가_발생한다() {
+    // Given
+    Course savedCourse = courseRepository.saveAll(List.of(previousCourse)).get(0);
+
+    // When Then
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId()))
+        .isInstanceOf(CourseNotFoundException.class);
+  }
+
+  @Test
+  void 학기정보가_없는_과목을_삭제하면_예외가_발생한다() {
+    // Given
+    Course courseWithoutTerm =
+        Course.builder().name("잘못된 과목").code("INVALID").professor("Unknown").build();
+    Course savedCourse = courseRepository.saveAll(List.of(courseWithoutTerm)).get(0);
+
+    // When Then
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId()))
+        .isInstanceOf(CourseNotFoundException.class);
+    assertThat(courseRepository.findAll()).containsExactly(savedCourse);
+  }
+
+  @Test
+  void 사용중인_과목을_삭제하면_예외가_발생한다() {
+    // Given
+    Course savedCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);
+    courseRepository.markReferenced(savedCourse.getCourseId());
+
+    // When Then
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId()))
+        .isInstanceOf(CourseInUseException.class)
+        .hasMessage("사용 중인 강의는 삭제할 수 없습니다.");
+    assertThat(courseRepository.findAll()).containsExactly(savedCourse);
   }
 }

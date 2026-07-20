@@ -44,6 +44,16 @@ public class CourseController {
     throw new ForbiddenException();
   }
 
+  @DeleteMapping("/{courseId}")
+  public ResponseEntity<Void> deleteCurrentCourse(
+      @PathVariable Long courseId, @RequestAttribute Claims claims) {
+    if (Role.isAuthorized(claims, Role.ADMIN)) {
+      courseService.deleteCurrentCourse(courseId);
+      return ResponseEntity.noContent().build();
+    }
+    throw new ForbiddenException();
+  }
+
   @GetMapping
   public ResponseEntity<CourseDto> getCourses(
       @RequestParam(name = "search", required = false) String keyword,

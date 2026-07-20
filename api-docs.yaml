@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   title: OpenAPI definition
-  version: v1.3.1
+  version: v1.3.2
 servers:
   - url: http://localhost:8080
     description: local
@@ -317,6 +317,42 @@ paths:
               schema:
                 type: integer
                 format: int32
+
+  /api/courses/{courseId}:
+    delete:
+      tags:
+        - 강의 관리 API
+      summary: 현재 학기 강의 삭제
+      description: 현재 학기의 미사용 강의만 삭제합니다.
+      operationId: deleteCurrentCourse
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionResponse'
+        '404':
+          description: Course not found in the current academic term
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionResponse'
+        '409':
+          description: Course is referenced by an application, group, or report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionResponse'
 
   # ===================
   # Study Group/Team APIs
@@ -1115,6 +1151,22 @@ components:
           type: number
           description: Course ID
           example: 1
+    ExceptionResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          example: 409
+        error:
+          type: string
+          example: Conflict
+        message:
+          type: string
+          example: 사용 중인 강의는 삭제할 수 없습니다.
+        trace:
+          type: string
+          nullable: true
     TokenForm:
       type: object
       properties:

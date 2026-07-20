@@ -18,5 +18,15 @@ public interface JpaCourseRepository extends JpaRepository<Course, Long> {
 
   List<Course> findAllByAcademicTermIsCurrentTrue();
 
+  @Query(
+      "select exists (select 1 from PreferredCourse pc where pc.course.courseId = :courseId)")
+  boolean existsPreferredCourseReferences(@Param("courseId") Long courseId);
+
+  @Query("select exists (select 1 from GroupCourse gc where gc.course.courseId = :courseId)")
+  boolean existsGroupCourseReferences(@Param("courseId") Long courseId);
+
+  @Query("select exists (select 1 from StudyCourse sc where sc.course.courseId = :courseId)")
+  boolean existsStudyCourseReferences(@Param("courseId") Long courseId);
+
   void deleteAllByAcademicTerm(AcademicTerm academicTerm);
 }

@@ -3,6 +3,8 @@ package edu.handong.csee.histudy.service;
 import edu.handong.csee.histudy.domain.*;
 import edu.handong.csee.histudy.dto.CourseDto;
 import edu.handong.csee.histudy.dto.CourseIdDto;
+import edu.handong.csee.histudy.exception.CourseInUseException;
+import edu.handong.csee.histudy.exception.CourseNotFoundException;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
 import edu.handong.csee.histudy.exception.StudyGroupNotFoundException;
 import edu.handong.csee.histudy.exception.UserNotFoundException;
@@ -71,5 +73,19 @@ public class CourseService {
       return 1;
     }
     return 0;
+  }
+
+  @Transactional
+  public void deleteCurrentCourse(Long courseId) {
+    Course course =
+        courseRepository.findById(courseId).orElseThrow(CourseNotFoundException::new);
+    if (course.getAcademicTerm() == null
+        || !Boolean.TRUE.equals(course.getAcademicTerm().getIsCurrent())) {
+      throw new CourseNotFoundException();
+    }
+    if (courseRepository.hasReferences(courseId)) {
+      throw new CourseInUseException();
+    }
+    courseRepository.deleteById(courseId);
   }
 }

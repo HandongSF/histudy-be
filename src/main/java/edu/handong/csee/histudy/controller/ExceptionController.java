@@ -4,6 +4,7 @@ import edu.handong.csee.histudy.dto.ExceptionResponse;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.AcademicTermNotFoundException;
 import edu.handong.csee.histudy.exception.BannerNotFoundException;
+import edu.handong.csee.histudy.exception.CourseInUseException;
 import edu.handong.csee.histudy.exception.CourseNotFoundException;
 import edu.handong.csee.histudy.exception.DuplicateAcademicTermException;
 import edu.handong.csee.histudy.exception.ForbiddenException;
@@ -92,7 +93,11 @@ public class ExceptionController {
         .body(UserDto.UserLogin.builder().isRegistered(false).build());
   }
 
-  @ExceptionHandler({DuplicateAcademicTermException.class, UserAlreadyExistsException.class})
+  @ExceptionHandler({
+    CourseInUseException.class,
+    DuplicateAcademicTermException.class,
+    UserAlreadyExistsException.class
+  })
   public ResponseEntity<ExceptionResponse> handleConflict(Exception e) {
     return createErrorResponse(HttpStatus.CONFLICT, e.getMessage());
   }
