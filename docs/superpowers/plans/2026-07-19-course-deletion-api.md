@@ -93,14 +93,15 @@ boolean hasReferences(Long courseId);
 `JpaCourseRepository`에 다음을 추가한다.
 
 ```java
-@Query("select count(pc) from PreferredCourse pc where pc.course.courseId = :courseId")
-long countPreferredCourseReferences(@Param("courseId") Long courseId);
+@Query(
+    "select exists (select 1 from PreferredCourse pc where pc.course.courseId = :courseId)")
+boolean existsPreferredCourseReferences(@Param("courseId") Long courseId);
 
-@Query("select count(gc) from GroupCourse gc where gc.course.courseId = :courseId")
-long countGroupCourseReferences(@Param("courseId") Long courseId);
+@Query("select exists (select 1 from GroupCourse gc where gc.course.courseId = :courseId)")
+boolean existsGroupCourseReferences(@Param("courseId") Long courseId);
 
-@Query("select count(sc) from StudyCourse sc where sc.course.courseId = :courseId")
-long countStudyCourseReferences(@Param("courseId") Long courseId);
+@Query("select exists (select 1 from StudyCourse sc where sc.course.courseId = :courseId)")
+boolean existsStudyCourseReferences(@Param("courseId") Long courseId);
 ```
 
 `CourseRepositoryImpl`에 다음을 추가한다.
@@ -108,9 +109,9 @@ long countStudyCourseReferences(@Param("courseId") Long courseId);
 ```java
 @Override
 public boolean hasReferences(Long courseId) {
-  return repository.countPreferredCourseReferences(courseId) > 0
-      || repository.countGroupCourseReferences(courseId) > 0
-      || repository.countStudyCourseReferences(courseId) > 0;
+  return repository.existsPreferredCourseReferences(courseId)
+      || repository.existsGroupCourseReferences(courseId)
+      || repository.existsStudyCourseReferences(courseId);
 }
 ```
 
@@ -290,7 +291,8 @@ public class CourseInUseException extends RuntimeException {
 public void deleteCurrentCourse(Long courseId) {
   Course course =
       courseRepository.findById(courseId).orElseThrow(CourseNotFoundException::new);
-  if (!Boolean.TRUE.equals(course.getAcademicTerm().getIsCurrent())) {
+  if (course.getAcademicTerm() == null
+      || !Boolean.TRUE.equals(course.getAcademicTerm().getIsCurrent())) {
     throw new CourseNotFoundException();
   }
   if (courseRepository.hasReferences(courseId)) {

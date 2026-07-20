@@ -225,6 +225,19 @@ class CourseServiceTest {
   }
 
   @Test
+  void 학기정보가_없는_과목을_삭제하면_예외가_발생한다() {
+    // Given
+    Course courseWithoutTerm =
+        Course.builder().name("잘못된 과목").code("INVALID").professor("Unknown").build();
+    Course savedCourse = courseRepository.saveAll(List.of(courseWithoutTerm)).get(0);
+
+    // When Then
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId()))
+        .isInstanceOf(CourseNotFoundException.class);
+    assertThat(courseRepository.findAll()).containsExactly(savedCourse);
+  }
+
+  @Test
   void 사용중인_과목을_삭제하면_예외가_발생한다() {
     // Given
     Course savedCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);

@@ -79,7 +79,8 @@ public class CourseService {
   public void deleteCurrentCourse(Long courseId) {
     Course course =
         courseRepository.findById(courseId).orElseThrow(CourseNotFoundException::new);
-    if (!Boolean.TRUE.equals(course.getAcademicTerm().getIsCurrent())) {
+    if (course.getAcademicTerm() == null
+        || !Boolean.TRUE.equals(course.getAcademicTerm().getIsCurrent())) {
       throw new CourseNotFoundException();
     }
     if (courseRepository.hasReferences(courseId)) {
