@@ -143,6 +143,20 @@ class CourseServiceTest {
   }
 
   @Test
+  void 사용중인_현재_학기_과목이_있으면_CSV_교체를_거절한다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    Course savedCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);
+    courseRepository.markReferenced(savedCourse.getCourseId());
+
+    // When Then
+    assertThatThrownBy(() -> courseService.replaceCourses(replacementCsvData))
+        .isInstanceOf(CourseInUseException.class)
+        .hasMessage("사용 중인 강의는 삭제할 수 없습니다.");
+    assertThat(courseRepository.findAll()).containsExactly(savedCourse);
+  }
+
+  @Test
   void 현재_학기_없이_과목_CSV로_교체하면_예외가_발생한다() {
     // Given
     // When Then
