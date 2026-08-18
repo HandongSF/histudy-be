@@ -12,6 +12,7 @@ import edu.handong.csee.histudy.domain.StudyReport;
 import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
+import edu.handong.csee.histudy.exception.ReportNotFoundException;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyGroupRepository;
@@ -138,6 +139,51 @@ class ImageServiceTest {
     try (var reportFiles = Files.list(tempDir.resolve("reports"))) {
       assertThat(reportFiles.toList()).hasSize(1);
     }
+  }
+
+  @Test
+  void 다른_그룹_보고서의_이미지는_재사용할수없다() throws Exception {
+    // Given
+    academicTermRepository.save(currentTerm);
+    User member = userRepository.save(memberUser);
+    User otherMember =
+        userRepository.save(
+            User.builder()
+                .sub("sub-2")
+                .sid("22230002")
+                .email("other@histudy.com")
+                .name("Other")
+                .role(Role.USER)
+                .build());
+    StudyApplicant memberApplicant =
+        StudyApplicant.of(currentTerm, member, List.of(), List.of(commonCourse));
+    StudyApplicant otherApplicant =
+        StudyApplicant.of(currentTerm, otherMember, List.of(), List.of(commonCourse));
+    studyGroupRepository.save(StudyGroup.of(7, currentTerm, List.of(memberApplicant)));
+    StudyGroup otherGroup =
+        studyGroupRepository.save(StudyGroup.of(8, currentTerm, List.of(otherApplicant)));
+    StudyReport otherReport =
+        studyReportRepository.save(
+            StudyReport.builder()
+                .title("다른 그룹 보고서")
+                .content("접근 불가")
+                .totalMinutes(90)
+                .studyGroup(otherGroup)
+                .participants(List.of(otherMember))
+                .images(List.of("reports/existing.png"))
+                .courses(List.of(commonCourse))
+                .build());
+    MockMultipartFile multipartFile =
+        new MockMultipartFile("image", "report.png", "image/png", pngBytes);
+
+    // When Then
+    assertThatThrownBy(
+            () ->
+                imageService.getImagePaths(
+                    "member@histudy.com",
+                    multipartFile,
+                    Optional.of(otherReport.getStudyReportId())))
+        .isInstanceOf(ReportNotFoundException.class);
   }
 
   @Test

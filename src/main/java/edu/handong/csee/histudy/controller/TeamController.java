@@ -52,7 +52,10 @@ public class TeamController {
   public ResponseEntity<ReportDto.ReportInfo> getReport(
       @PathVariable Long reportId, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.MEMBER, Role.ADMIN)) {
-      Optional<ReportDto.ReportInfo> reportsOr = reportService.getReport(reportId);
+      Optional<ReportDto.ReportInfo> reportsOr =
+          Role.isAuthorized(claims, Role.ADMIN)
+              ? reportService.getReport(reportId)
+              : reportService.getReport(reportId, claims.getSubject());
       return reportsOr.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
     throw new ForbiddenException();
@@ -62,7 +65,7 @@ public class TeamController {
   public ResponseEntity<String> updateReport(
       @PathVariable Long reportId, @RequestBody ReportForm form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.MEMBER)) {
-      return (reportService.updateReport(reportId, toReportCommand(form)))
+      return (reportService.updateReport(reportId, toReportCommand(form), claims.getSubject()))
           ? ResponseEntity.ok().build()
           : ResponseEntity.notFound().build();
     }
@@ -73,7 +76,7 @@ public class TeamController {
   public ResponseEntity<String> deleteReport(
       @PathVariable Long reportId, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.MEMBER)) {
-      return (reportService.deleteReport(reportId))
+      return (reportService.deleteReport(reportId, claims.getSubject()))
           ? ResponseEntity.ok().build()
           : ResponseEntity.notFound().build();
     }

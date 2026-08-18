@@ -3,13 +3,13 @@ package edu.handong.csee.histudy.service;
 import edu.handong.csee.histudy.domain.*;
 import edu.handong.csee.histudy.dto.ReportDto;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
-import edu.handong.csee.histudy.exception.ReportNotFoundException;
 import edu.handong.csee.histudy.exception.UserNotFoundException;
 import edu.handong.csee.histudy.repository.*;
 import edu.handong.csee.histudy.service.command.ReportCommand;
 import edu.handong.csee.histudy.util.ImagePathMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -83,7 +83,12 @@ public class ReportService {
         .toList();
   }
 
-  public boolean updateReport(Long reportId, ReportCommand command) {
+  public boolean updateReport(Long reportId, ReportCommand command, String email) {
+    Optional<StudyReport> targetReportOr = findMemberReport(reportId, email);
+    if (targetReportOr.isEmpty()) {
+      return false;
+    }
+
     List<User> participants =
         command.participantIds().stream()
             .map(userRepository::findById)
@@ -96,8 +101,7 @@ public class ReportService {
             .flatMap(Optional::stream)
             .toList();
 
-    StudyReport targetReport =
-        studyReportRepository.findById(reportId).orElseThrow(ReportNotFoundException::new);
+    StudyReport targetReport = targetReportOr.get();
 
     // parse image path to filename
     // /path/to/image.png -> image.png
@@ -124,8 +128,18 @@ public class ReportService {
             });
   }
 
-  public boolean deleteReport(Long reportId) {
-    Optional<StudyReport> reportOr = studyReportRepository.findById(reportId);
+  public Optional<ReportDto.ReportInfo> getReport(Long reportId, String email) {
+    return findMemberReport(reportId, email)
+        .map(
+            report -> {
+              Map<Long, String> imgFullPaths =
+                  imagePathMapper.parseImageToMapWithFullPath(report.getImages());
+              return new ReportDto.ReportInfo(report, imgFullPaths);
+            });
+  }
+
+  public boolean deleteReport(Long reportId, String email) {
+    Optional<StudyReport> reportOr = findMemberReport(reportId, email);
 
     if (reportOr.isEmpty()) {
       return false;
@@ -133,5 +147,20 @@ public class ReportService {
       studyReportRepository.delete(reportOr.get());
       return true;
     }
+  }
+
+  private Optional<StudyReport> findMemberReport(Long reportId, String email) {
+    AcademicTerm currentTerm =
+        academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
+    User user = userRepository.findUserByEmail(email).orElseThrow(UserNotFoundException::new);
+    StudyGroup memberGroup =
+        studyGroupRepository.findByUserAndTerm(user, currentTerm).orElseThrow();
+
+    return studyReportRepository
+        .findById(reportId)
+        .filter(
+            report ->
+                Objects.equals(
+                    report.getStudyGroup().getStudyGroupId(), memberGroup.getStudyGroupId()));
   }
 }

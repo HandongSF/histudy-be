@@ -6,6 +6,7 @@ import static org.springframework.util.ResourceUtils.isUrl;
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.ReportImage;
 import edu.handong.csee.histudy.domain.StudyGroup;
+import edu.handong.csee.histudy.domain.StudyReport;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.exception.*;
 import edu.handong.csee.histudy.repository.*;
@@ -57,7 +58,13 @@ public class ImageService {
 
     if (reportIdOr.isPresent()) {
       Long id = reportIdOr.get();
-      Optional<String> sameResource = getSameContent(imageAsFormData, id);
+      StudyReport report =
+          studyReportRepository.findById(id).orElseThrow(ReportNotFoundException::new);
+      if (!Objects.equals(
+          report.getStudyGroup().getStudyGroupId(), studyGroup.getStudyGroupId())) {
+        throw new ReportNotFoundException();
+      }
+      Optional<String> sameResource = getSameContent(imageAsFormData, report);
 
       if (sameResource.isPresent()) {
         return imagePathMapper.getFullPath(sameResource.get());
@@ -100,15 +107,9 @@ public class ImageService {
     }
   }
 
-  private Optional<String> getSameContent(MultipartFile src, Long reportId) {
+  private Optional<String> getSameContent(MultipartFile src, StudyReport report) {
     List<String> targetPaths =
-        studyReportRepository
-            .findById(reportId)
-            .orElseThrow(ReportNotFoundException::new)
-            .getImages()
-            .stream()
-            .map(ReportImage::getPath)
-            .toList();
+        report.getImages().stream().map(ReportImage::getPath).toList();
 
     return targetPaths.stream()
         .filter(
