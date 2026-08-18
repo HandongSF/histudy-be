@@ -25,6 +25,7 @@ public class UserService {
   private final StudyGroupRepository studyGroupRepository;
   private final AcademicTermRepository academicTermRepository;
   private final StudyApplicantRepository studyApplicantRepository;
+  private final StudyReportRepository studyReportRepository;
 
   public List<User> search(Optional<String> keyword) {
     if (keyword.isEmpty() || keyword.get().isBlank()) {
@@ -226,14 +227,11 @@ public class UserService {
 
     studyGroupRepository
         .findAllEmptyByAcademicTerm(currentTerm)
-        .forEach(
+        .stream()
+        .filter(
             group ->
-                /*
-                 TODO: Need to check there are associated reports
-                 Currently deleting a group with no members but with reports
-                 will cause FK constraint violation
-                */
-                studyGroupRepository.deleteById(group.getStudyGroupId()));
+                studyReportRepository.findAllByStudyGroupOrderByCreatedDateDesc(group).isEmpty())
+        .forEach(group -> studyGroupRepository.deleteById(group.getStudyGroupId()));
   }
 
   public List<UserDto.UserInfo> getAppliedWithoutGroup() {
