@@ -297,6 +297,12 @@ paths:
       responses:
         '200':
           description: OK
+        '409':
+          description: 현재 학기 강의가 신청, 그룹 또는 리포트에서 사용 중입니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionResponse'
   /api/courses/delete:
     post:
       tags:

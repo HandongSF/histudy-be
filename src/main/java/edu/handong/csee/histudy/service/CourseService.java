@@ -31,6 +31,9 @@ public class CourseService {
     AcademicTerm currentTerm =
         academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
     List<Course> courses = toCourses(courseData, currentTerm);
+    if (courseRepository.hasReferences(currentTerm)) {
+      throw new CourseInUseException();
+    }
 
     courseRepository.deleteAllByAcademicTerm(currentTerm);
     courseRepository.saveAll(courses);

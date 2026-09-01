@@ -42,6 +42,11 @@ public class CourseRepositoryImpl implements CourseRepository {
   }
 
   @Override
+  public boolean hasReferences(AcademicTerm academicTerm) {
+    return repository.existsReferencesByAcademicTerm(academicTerm);
+  }
+
+  @Override
   public void deleteById(Long id) {
     repository.deleteById(id);
   }

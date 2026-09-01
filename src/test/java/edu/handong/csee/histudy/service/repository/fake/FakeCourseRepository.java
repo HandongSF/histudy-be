@@ -53,6 +53,14 @@ public class FakeCourseRepository implements CourseRepository {
   }
 
   @Override
+  public boolean hasReferences(AcademicTerm academicTerm) {
+    return store.stream()
+        .filter(course -> course.getAcademicTerm().equals(academicTerm))
+        .map(Course::getCourseId)
+        .anyMatch(referencedCourseIds::contains);
+  }
+
+  @Override
   public void deleteById(Long id) {
     store.removeIf(c -> c.getCourseId().equals(id));
   }

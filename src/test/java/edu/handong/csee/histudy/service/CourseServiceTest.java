@@ -143,6 +143,57 @@ class CourseServiceTest {
   }
 
   @Test
+  void 사용중인_현재_학기_과목이_있으면_CSV_교체를_거절한다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    Course savedCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);
+    courseRepository.markReferenced(savedCourse.getCourseId());
+
+    // When Then
+    assertThatThrownBy(() -> courseService.replaceCourses(replacementCsvData))
+        .isInstanceOf(CourseInUseException.class)
+        .hasMessage("사용 중인 강의는 삭제할 수 없습니다.");
+    assertThat(courseRepository.findAll()).containsExactly(savedCourse);
+  }
+
+  @Test
+  void 다른_학기의_사용중인_과목이_있어도_CSV_교체를_허용한다() {
+    // Given
+    AcademicTerm anotherCurrentTerm =
+        AcademicTerm.builder()
+            .academicYear(2026)
+            .semester(TermType.SPRING)
+            .isCurrent(true)
+            .build();
+    academicTermRepository.save(currentTerm);
+    academicTermRepository.save(anotherCurrentTerm);
+    Course savedCurrentCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);
+    Course referencedOtherTermCourse =
+        courseRepository
+            .saveAll(
+                List.of(
+                    Course.builder()
+                        .name("알고리즘")
+                        .code("CSEE202")
+                        .professor("Park")
+                        .academicTerm(anotherCurrentTerm)
+                        .build()))
+            .get(0);
+    courseRepository.markReferenced(referencedOtherTermCourse.getCourseId());
+
+    // When
+    courseService.replaceCourses(replacementCsvData);
+
+    // Then
+    assertThat(courseRepository.findAll()).doesNotContain(savedCurrentCourse);
+    assertThat(courseRepository.findAll()).contains(referencedOtherTermCourse);
+    assertThat(courseRepository.findAll())
+        .filteredOn(course -> course.getAcademicTerm().equals(currentTerm))
+        .extracting(Course::getName)
+        .containsExactlyInAnyOrder("프로그래밍입문", "이산수학");
+  }
+
+  @Test
   void 현재_학기_없이_과목_CSV로_교체하면_예외가_발생한다() {
     // Given
     // When Then
