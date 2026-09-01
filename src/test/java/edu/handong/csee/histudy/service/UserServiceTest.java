@@ -9,6 +9,7 @@ import edu.handong.csee.histudy.domain.RequestStatus;
 import edu.handong.csee.histudy.domain.Role;
 import edu.handong.csee.histudy.domain.StudyApplicant;
 import edu.handong.csee.histudy.domain.StudyGroup;
+import edu.handong.csee.histudy.domain.StudyReport;
 import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.dto.ApplyFormDto;
@@ -21,6 +22,7 @@ import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermReposito
 import edu.handong.csee.histudy.service.repository.fake.FakeCourseRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyGroupRepository;
+import edu.handong.csee.histudy.service.repository.fake.FakeStudyReportRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeUserRepository;
 import java.util.List;
 import java.util.Optional;
@@ -126,6 +128,7 @@ class UserServiceTest {
   private FakeStudyGroupRepository studyGroupRepository;
   private FakeAcademicTermRepository academicTermRepository;
   private FakeStudyApplicationRepository studyApplicantRepository;
+  private FakeStudyReportRepository studyReportRepository;
   private UserService userService;
 
   @BeforeEach
@@ -135,13 +138,15 @@ class UserServiceTest {
     studyGroupRepository = new FakeStudyGroupRepository();
     academicTermRepository = new FakeAcademicTermRepository();
     studyApplicantRepository = new FakeStudyApplicationRepository();
+    studyReportRepository = new FakeStudyReportRepository();
     userService =
         new UserService(
             userRepository,
             courseRepository,
             studyGroupRepository,
             academicTermRepository,
-            studyApplicantRepository);
+            studyApplicantRepository,
+            studyReportRepository);
   }
 
   @Test
@@ -418,5 +423,58 @@ class UserServiceTest {
     // Then
     assertThat(result).hasSize(1);
     assertThat(result.get(0).getEmail()).isEqualTo(savedUngroupedUser.getEmail());
+  }
+
+  @Test
+  void 리포트가_있는_그룹에서_마지막_멤버를_제거하면_빈_그룹을_보존한다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    User user = userRepository.save(groupedUser);
+    Course course = courseRepository.saveAll(List.of(primaryCourse)).get(0);
+    StudyApplicant applicant =
+        studyApplicantRepository.save(
+            StudyApplicant.of(currentTerm, user, List.of(), List.of(course)));
+    StudyGroup group =
+        studyGroupRepository.save(StudyGroup.of(1, currentTerm, List.of(applicant)));
+    studyReportRepository.save(
+        StudyReport.builder()
+            .title("1주차")
+            .content("활동 기록")
+            .totalMinutes(60)
+            .studyGroup(group)
+            .participants(List.of(user))
+            .images(List.of())
+            .courses(List.of(course))
+            .build());
+    UserDto.UserEdit form = UserDto.UserEdit.builder().id(user.getUserId()).team(null).build();
+
+    // When
+    userService.editUser(form);
+
+    // Then
+    assertThat(applicant.getStudyGroup()).isNull();
+    assertThat(studyGroupRepository.findById(group.getStudyGroupId())).isPresent();
+    assertThat(studyReportRepository.findAll()).hasSize(1);
+  }
+
+  @Test
+  void 리포트가_없는_그룹에서_마지막_멤버를_제거하면_빈_그룹을_삭제한다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    User user = userRepository.save(groupedUser);
+    Course course = courseRepository.saveAll(List.of(primaryCourse)).get(0);
+    StudyApplicant applicant =
+        studyApplicantRepository.save(
+            StudyApplicant.of(currentTerm, user, List.of(), List.of(course)));
+    StudyGroup group =
+        studyGroupRepository.save(StudyGroup.of(1, currentTerm, List.of(applicant)));
+    UserDto.UserEdit form = UserDto.UserEdit.builder().id(user.getUserId()).team(null).build();
+
+    // When
+    userService.editUser(form);
+
+    // Then
+    assertThat(applicant.getStudyGroup()).isNull();
+    assertThat(studyGroupRepository.findById(group.getStudyGroupId())).isEmpty();
   }
 }
