@@ -11,9 +11,12 @@ import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
 import edu.handong.csee.histudy.service.AcademicTermService;
 import edu.handong.csee.histudy.service.TeamService;
 import edu.handong.csee.histudy.service.UserService;
+import edu.handong.csee.histudy.util.CourseCSVTemplate;
 import io.jsonwebtoken.Claims;
 import java.util.List;
+import org.springframework.http.HttpHeaders;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -135,6 +138,19 @@ public class AdminController {
   public ResponseEntity<AcademicTermDto> getAllAcademicTerms(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
       return ResponseEntity.ok(academicTermService.getAllAcademicTerms());
+    }
+    throw new ForbiddenException();
+  }
+
+  @GetMapping(value = "/academicTerm/course-template", produces = "text/csv")
+  public ResponseEntity<byte[]> downloadCourseTemplate(@RequestAttribute Claims claims) {
+    if (Role.isAuthorized(claims, Role.ADMIN)) {
+      return ResponseEntity.ok()
+          .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+          .header(
+              HttpHeaders.CONTENT_DISPOSITION,
+              "attachment; filename=\"course-upload-template.csv\"")
+          .body(CourseCSVTemplate.content());
     }
     throw new ForbiddenException();
   }

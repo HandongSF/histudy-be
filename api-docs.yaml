@@ -835,6 +835,27 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/AcademicTermDto'
+  /api/admin/academicTerm/course-template:
+    get:
+      tags:
+        - 관리자 API
+      summary: 과목 업로드 양식 다운로드
+      operationId: downloadCourseTemplate
+      responses:
+        '200':
+          description: UTF-8 CSV 업로드 양식 파일
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: attachment filename
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: 관리자 권한이 없습니다.
   /api/admin/academicTerm/{id}/current:
     patch:
       tags:
