@@ -153,14 +153,16 @@ public class ReportService {
     AcademicTerm currentTerm =
         academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
     User user = userRepository.findUserByEmail(email).orElseThrow(UserNotFoundException::new);
-    StudyGroup memberGroup =
-        studyGroupRepository.findByUserAndTerm(user, currentTerm).orElseThrow();
-
-    return studyReportRepository
-        .findById(reportId)
-        .filter(
-            report ->
-                Objects.equals(
-                    report.getStudyGroup().getStudyGroupId(), memberGroup.getStudyGroupId()));
+    return studyGroupRepository
+        .findByUserAndTerm(user, currentTerm)
+        .flatMap(
+            memberGroup ->
+                studyReportRepository
+                    .findById(reportId)
+                    .filter(
+                        report ->
+                            Objects.equals(
+                                report.getStudyGroup().getStudyGroupId(),
+                                memberGroup.getStudyGroupId())));
   }
 }

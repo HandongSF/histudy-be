@@ -243,6 +243,20 @@ class ReportServiceTest {
   }
 
   @Test
+  void 현재_학기_그룹이_없으면_활동_보고서_상세를_조회할수없다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    userRepository.save(memberUser);
+
+    // When
+    Optional<ReportDto.ReportInfo> result =
+        reportService.getReport(1L, "member@histudy.com");
+
+    // Then
+    assertThat(result).isEmpty();
+  }
+
+  @Test
   void 작성된_보고서를_업데이트하면_내용과_이미지가_변경된다() {
     // Given
     academicTermRepository.save(currentTerm);
