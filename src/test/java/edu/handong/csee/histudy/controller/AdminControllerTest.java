@@ -23,6 +23,7 @@ import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.TeamService;
 import edu.handong.csee.histudy.service.UserService;
 import io.jsonwebtoken.Claims;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -272,6 +273,34 @@ class AdminControllerTest {
         .andExpect(status().isForbidden());
 
     verify(academicTermService, never()).getAllAcademicTerms();
+  }
+
+  @Test
+  void 관리자가_과목업로드양식다운로드시_CSV파일을_반환한다() throws Exception {
+    Claims claims = adminClaims("admin@test.com");
+    String expectedContent = "\uFEFFtitle,code,prof\r\n";
+
+    mockMvc
+        .perform(
+            get("/api/admin/academicTerm/course-template").requestAttr("claims", claims))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType("text/csv;charset=UTF-8"))
+        .andExpect(
+            header()
+                .string(
+                    "Content-Disposition",
+                    "attachment; filename=\"course-upload-template.csv\""))
+        .andExpect(content().bytes(expectedContent.getBytes(StandardCharsets.UTF_8)));
+  }
+
+  @Test
+  void 비관리자가_과목업로드양식다운로드시_실패() throws Exception {
+    Claims claims = userClaims("user@test.com");
+
+    mockMvc
+        .perform(
+            get("/api/admin/academicTerm/course-template").requestAttr("claims", claims))
+        .andExpect(status().isForbidden());
   }
 
   @Test
