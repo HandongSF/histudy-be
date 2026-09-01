@@ -157,6 +157,43 @@ class CourseServiceTest {
   }
 
   @Test
+  void 다른_학기의_사용중인_과목이_있어도_CSV_교체를_허용한다() {
+    // Given
+    AcademicTerm anotherCurrentTerm =
+        AcademicTerm.builder()
+            .academicYear(2026)
+            .semester(TermType.SPRING)
+            .isCurrent(true)
+            .build();
+    academicTermRepository.save(currentTerm);
+    academicTermRepository.save(anotherCurrentTerm);
+    Course savedCurrentCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);
+    Course referencedOtherTermCourse =
+        courseRepository
+            .saveAll(
+                List.of(
+                    Course.builder()
+                        .name("알고리즘")
+                        .code("CSEE202")
+                        .professor("Park")
+                        .academicTerm(anotherCurrentTerm)
+                        .build()))
+            .get(0);
+    courseRepository.markReferenced(referencedOtherTermCourse.getCourseId());
+
+    // When
+    courseService.replaceCourses(replacementCsvData);
+
+    // Then
+    assertThat(courseRepository.findAll()).doesNotContain(savedCurrentCourse);
+    assertThat(courseRepository.findAll()).contains(referencedOtherTermCourse);
+    assertThat(courseRepository.findAll())
+        .filteredOn(course -> course.getAcademicTerm().equals(currentTerm))
+        .extracting(Course::getName)
+        .containsExactlyInAnyOrder("프로그래밍입문", "이산수학");
+  }
+
+  @Test
   void 현재_학기_없이_과목_CSV로_교체하면_예외가_발생한다() {
     // Given
     // When Then
