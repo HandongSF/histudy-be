@@ -1,6 +1,7 @@
 package edu.handong.csee.histudy.controller;
 
 import static edu.handong.csee.histudy.support.AuthClaimsFactory.memberClaims;
+import static edu.handong.csee.histudy.support.AuthClaimsFactory.adminClaims;
 import static edu.handong.csee.histudy.support.AuthClaimsFactory.userClaims;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -131,23 +132,40 @@ class TeamControllerTest {
     Claims claims = memberClaims("member@test.com");
 
     ReportDto.ReportInfo reportInfo = mock(ReportDto.ReportInfo.class);
-    when(reportService.getReport(anyLong())).thenReturn(Optional.of(reportInfo));
+    when(reportService.getReport(anyLong(), anyString())).thenReturn(Optional.of(reportInfo));
 
     mockMvc
         .perform(get("/api/team/reports/1").requestAttr("claims", claims))
         .andExpect(status().isOk())
         .andExpect(content().contentType("application/json"));
+
+    verify(reportService).getReport(1L, "member@test.com");
   }
 
   @Test
   void 그룹원이_없는보고서조회시_실패() throws Exception {
     Claims claims = memberClaims("member@test.com");
 
-    when(reportService.getReport(anyLong())).thenReturn(Optional.empty());
+    when(reportService.getReport(anyLong(), anyString())).thenReturn(Optional.empty());
 
     mockMvc
         .perform(get("/api/team/reports/1").requestAttr("claims", claims))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void 관리자가_특정보고서조회시_그룹제한없이_성공() throws Exception {
+    Claims claims = adminClaims("admin@test.com");
+    ReportDto.ReportInfo reportInfo = mock(ReportDto.ReportInfo.class);
+    when(reportService.getReport(anyLong())).thenReturn(Optional.of(reportInfo));
+
+    mockMvc
+        .perform(get("/api/team/reports/1").requestAttr("claims", claims))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType("application/json"));
+
+    verify(reportService).getReport(1L);
+    verify(reportService, never()).getReport(anyLong(), anyString());
   }
 
   @Test
@@ -165,7 +183,8 @@ class TeamControllerTest {
             .images(List.of("/path/to/updated_image.jpg"))
             .build();
 
-    when(reportService.updateReport(anyLong(), any(ReportCommand.class))).thenReturn(true);
+    when(reportService.updateReport(anyLong(), any(ReportCommand.class), anyString()))
+        .thenReturn(true);
 
     // When
     mockMvc
@@ -178,7 +197,8 @@ class TeamControllerTest {
 
     // Then
     ArgumentCaptor<ReportCommand> commandCaptor = ArgumentCaptor.forClass(ReportCommand.class);
-    verify(reportService).updateReport(eq(1L), commandCaptor.capture());
+    verify(reportService)
+        .updateReport(eq(1L), commandCaptor.capture(), eq("member@test.com"));
     ReportCommand command = commandCaptor.getValue();
     assertThat(command.title()).isEqualTo("수정된 제목");
     assertThat(command.content()).isEqualTo("Updated content");
@@ -193,7 +213,8 @@ class TeamControllerTest {
     Claims claims = memberClaims("member@test.com");
 
     ReportForm form = ReportForm.builder().build();
-    when(reportService.updateReport(anyLong(), any(ReportCommand.class))).thenReturn(false);
+    when(reportService.updateReport(anyLong(), any(ReportCommand.class), anyString()))
+        .thenReturn(false);
 
     mockMvc
         .perform(
@@ -208,18 +229,20 @@ class TeamControllerTest {
   void 그룹원이_보고서삭제시_성공() throws Exception {
     Claims claims = memberClaims("member@test.com");
 
-    when(reportService.deleteReport(anyLong())).thenReturn(true);
+    when(reportService.deleteReport(anyLong(), anyString())).thenReturn(true);
 
     mockMvc
         .perform(delete("/api/team/reports/1").requestAttr("claims", claims))
         .andExpect(status().isOk());
+
+    verify(reportService).deleteReport(1L, "member@test.com");
   }
 
   @Test
   void 그룹원이_없는보고서삭제시_실패() throws Exception {
     Claims claims = memberClaims("member@test.com");
 
-    when(reportService.deleteReport(anyLong())).thenReturn(false);
+    when(reportService.deleteReport(anyLong(), anyString())).thenReturn(false);
 
     mockMvc
         .perform(delete("/api/team/reports/1").requestAttr("claims", claims))

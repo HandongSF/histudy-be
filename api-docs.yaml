@@ -421,6 +421,7 @@ paths:
       tags:
         - 스터디 그룹 API
       summary: 그룹 특정 보고서 조회
+      description: 그룹 멤버는 자신의 현재 그룹 보고서만 조회할 수 있으며, 관리자는 모든 그룹 보고서를 조회할 수 있습니다.
       operationId: getReport
       parameters:
         - name: reportId
@@ -436,6 +437,8 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/ReportInfo'
+        '404':
+          description: 보고서가 없거나 그룹 멤버가 접근할 수 없는 보고서입니다.
     delete:
       tags:
         - 스터디 그룹 API
@@ -456,6 +459,8 @@ paths:
             '*/*':
               schema:
                 type: string
+        '404':
+          description: 보고서가 없거나 현재 그룹의 보고서가 아닙니다.
     patch:
       tags:
         - 스터디 그룹 API
@@ -482,6 +487,8 @@ paths:
             '*/*':
               schema:
                 type: string
+        '404':
+          description: 보고서가 없거나 현재 그룹의 보고서가 아닙니다.
   /api/team/reports/image:
     post:
       tags:
@@ -538,6 +545,8 @@ paths:
             application/json:
               example:
                 imagePath: /path/to/image.png
+        '404':
+          description: 보고서가 없거나 현재 그룹의 보고서가 아닙니다.
 
   # ===================
   # Admin APIs

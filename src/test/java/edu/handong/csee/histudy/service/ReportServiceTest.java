@@ -19,6 +19,7 @@ import edu.handong.csee.histudy.service.repository.fake.FakeStudyReportRepositor
 import edu.handong.csee.histudy.service.repository.fake.FakeUserRepository;
 import edu.handong.csee.histudy.util.ImagePathMapper;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -41,6 +42,14 @@ class ReportServiceTest {
           .sid("22230002")
           .email("participant@histudy.com")
           .name("Participant")
+          .role(Role.USER)
+          .build();
+  private final User otherMemberUser =
+      User.builder()
+          .sub("sub-3")
+          .sid("22230003")
+          .email("other@histudy.com")
+          .name("Other")
           .role(Role.USER)
           .build();
   private final Course primaryCourse =
@@ -200,6 +209,54 @@ class ReportServiceTest {
   }
 
   @Test
+  void 다른_그룹의_활동_보고서_상세는_조회할수없다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    User savedMemberUser = userRepository.save(memberUser);
+    User savedOtherMember = userRepository.save(otherMemberUser);
+    Course savedCourse = courseRepository.saveAll(List.of(primaryCourse)).get(0);
+    StudyApplicant memberApplicant =
+        StudyApplicant.of(currentTerm, savedMemberUser, List.of(), List.of(savedCourse));
+    StudyApplicant otherApplicant =
+        StudyApplicant.of(currentTerm, savedOtherMember, List.of(), List.of(savedCourse));
+    studyGroupRepository.save(StudyGroup.of(1, currentTerm, List.of(memberApplicant)));
+    StudyGroup otherGroup =
+        studyGroupRepository.save(StudyGroup.of(2, currentTerm, List.of(otherApplicant)));
+    StudyReport otherReport =
+        studyReportRepository.save(
+            StudyReport.builder()
+                .title("다른 그룹 보고서")
+                .content("접근 불가")
+                .totalMinutes(60)
+                .studyGroup(otherGroup)
+                .participants(List.of(savedOtherMember))
+                .images(List.of())
+                .courses(List.of(savedCourse))
+                .build());
+
+    // When
+    Optional<ReportDto.ReportInfo> result =
+        reportService.getReport(otherReport.getStudyReportId(), "member@histudy.com");
+
+    // Then
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void 현재_학기_그룹이_없으면_활동_보고서_상세를_조회할수없다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    userRepository.save(memberUser);
+
+    // When
+    Optional<ReportDto.ReportInfo> result =
+        reportService.getReport(1L, "member@histudy.com");
+
+    // Then
+    assertThat(result).isEmpty();
+  }
+
+  @Test
   void 작성된_보고서를_업데이트하면_내용과_이미지가_변경된다() {
     // Given
     academicTermRepository.save(currentTerm);
@@ -236,7 +293,8 @@ class ReportServiceTest {
             List.of(savedSecondaryCourse.getCourseId()));
 
     // When
-    boolean updated = reportService.updateReport(savedReport.getStudyReportId(), command);
+    boolean updated =
+        reportService.updateReport(savedReport.getStudyReportId(), command, "member@histudy.com");
 
     // Then
     assertThat(updated).isTrue();
@@ -250,6 +308,44 @@ class ReportServiceTest {
     assertThat(updatedReport.getImages())
         .extracting(image -> image.getPath())
         .containsExactly("reports/two.png");
+  }
+
+  @Test
+  void 다른_그룹의_활동_보고서는_업데이트할수없다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    User savedMemberUser = userRepository.save(memberUser);
+    User savedOtherMember = userRepository.save(otherMemberUser);
+    Course savedCourse = courseRepository.saveAll(List.of(primaryCourse)).get(0);
+    StudyApplicant memberApplicant =
+        StudyApplicant.of(currentTerm, savedMemberUser, List.of(), List.of(savedCourse));
+    StudyApplicant otherApplicant =
+        StudyApplicant.of(currentTerm, savedOtherMember, List.of(), List.of(savedCourse));
+    studyGroupRepository.save(StudyGroup.of(1, currentTerm, List.of(memberApplicant)));
+    StudyGroup otherGroup =
+        studyGroupRepository.save(StudyGroup.of(2, currentTerm, List.of(otherApplicant)));
+    StudyReport otherReport =
+        studyReportRepository.save(
+            StudyReport.builder()
+                .title("다른 그룹 보고서")
+                .content("접근 불가")
+                .totalMinutes(60)
+                .studyGroup(otherGroup)
+                .participants(List.of(savedOtherMember))
+                .images(List.of())
+                .courses(List.of(savedCourse))
+                .build());
+    ReportCommand command =
+        new ReportCommand("침범", "수정 시도", 90L, List.of(), List.of(), List.of());
+
+    // When
+    boolean updated =
+        reportService.updateReport(
+            otherReport.getStudyReportId(), command, "member@histudy.com");
+
+    // Then
+    assertThat(updated).isFalse();
+    assertThat(otherReport.getTitle()).isEqualTo("다른 그룹 보고서");
   }
 
   @Test
@@ -276,11 +372,47 @@ class ReportServiceTest {
                 .build());
 
     // When
-    boolean deleted = reportService.deleteReport(savedReport.getStudyReportId());
+    boolean deleted =
+        reportService.deleteReport(savedReport.getStudyReportId(), "member@histudy.com");
 
     // Then
     assertThat(deleted).isTrue();
     assertThat(studyReportRepository.findAll()).isEmpty();
-    assertThat(reportService.deleteReport(999L)).isFalse();
+    assertThat(reportService.deleteReport(999L, "member@histudy.com")).isFalse();
+  }
+
+  @Test
+  void 다른_그룹의_활동_보고서는_삭제할수없다() {
+    // Given
+    academicTermRepository.save(currentTerm);
+    User savedMemberUser = userRepository.save(memberUser);
+    User savedOtherMember = userRepository.save(otherMemberUser);
+    Course savedCourse = courseRepository.saveAll(List.of(primaryCourse)).get(0);
+    StudyApplicant memberApplicant =
+        StudyApplicant.of(currentTerm, savedMemberUser, List.of(), List.of(savedCourse));
+    StudyApplicant otherApplicant =
+        StudyApplicant.of(currentTerm, savedOtherMember, List.of(), List.of(savedCourse));
+    studyGroupRepository.save(StudyGroup.of(1, currentTerm, List.of(memberApplicant)));
+    StudyGroup otherGroup =
+        studyGroupRepository.save(StudyGroup.of(2, currentTerm, List.of(otherApplicant)));
+    StudyReport otherReport =
+        studyReportRepository.save(
+            StudyReport.builder()
+                .title("다른 그룹 보고서")
+                .content("접근 불가")
+                .totalMinutes(60)
+                .studyGroup(otherGroup)
+                .participants(List.of(savedOtherMember))
+                .images(List.of())
+                .courses(List.of(savedCourse))
+                .build());
+
+    // When
+    boolean deleted =
+        reportService.deleteReport(otherReport.getStudyReportId(), "member@histudy.com");
+
+    // Then
+    assertThat(deleted).isFalse();
+    assertThat(studyReportRepository.findById(otherReport.getStudyReportId())).isPresent();
   }
 }
