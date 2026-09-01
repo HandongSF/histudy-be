@@ -277,12 +277,16 @@ class AdminControllerTest {
 
   @Test
   void 관리자가_과목업로드양식다운로드시_CSV파일을_반환한다() throws Exception {
+    // Given
     Claims claims = adminClaims("admin@test.com");
     String expectedContent = "\uFEFFtitle,code,prof\r\n";
 
+    // When
     mockMvc
         .perform(
             get("/api/admin/academicTerm/course-template").requestAttr("claims", claims))
+
+        // Then
         .andExpect(status().isOk())
         .andExpect(content().contentType("text/csv;charset=UTF-8"))
         .andExpect(
@@ -295,11 +299,15 @@ class AdminControllerTest {
 
   @Test
   void 비관리자가_과목업로드양식다운로드시_실패() throws Exception {
+    // Given
     Claims claims = userClaims("user@test.com");
 
+    // When
     mockMvc
         .perform(
             get("/api/admin/academicTerm/course-template").requestAttr("claims", claims))
+
+        // Then
         .andExpect(status().isForbidden());
   }
 
