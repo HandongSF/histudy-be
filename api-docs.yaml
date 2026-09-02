@@ -303,6 +303,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExceptionResponse'
+        '403':
+          description: 관리자 권한이 없습니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionResponse'
+        '406':
+          description: 업로드 파일이 비어 있습니다.
         '409':
           description: 현재 학기 강의가 신청, 그룹 또는 리포트에서 사용 중입니다.
           content:

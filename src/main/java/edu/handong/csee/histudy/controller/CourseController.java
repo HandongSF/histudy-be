@@ -24,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class CourseController {
 
   private static final Set<String> CSV_CONTENT_TYPES =
-      Set.of("text/csv", "application/csv", "application/vnd.ms-excel");
+      Set.of("text/csv", "application/csv", "application/vnd.ms-excel", "application/octet-stream");
 
   private final CourseService courseService;
 
@@ -51,7 +51,8 @@ public class CourseController {
 
     String contentType = file.getContentType();
     if (contentType != null
-        && !CSV_CONTENT_TYPES.contains(contentType.split(";", 2)[0].toLowerCase(Locale.ROOT))) {
+        && !CSV_CONTENT_TYPES.contains(
+            contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT))) {
       throw new InvalidCourseCsvException("CSV 파일만 업로드할 수 있습니다.");
     }
   }

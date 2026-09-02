@@ -33,7 +33,10 @@ public class CSVResolver {
                     .setHeader()
                     .setSkipHeaderRecord(true)
                     .build())) {
-      if (!REQUIRED_HEADERS.equals(parser.getHeaderNames())) {
+      List<String> headerNames = parser.getHeaderNames();
+      if (headerNames == null
+          || headerNames.size() != REQUIRED_HEADERS.size()
+          || !headerNames.containsAll(REQUIRED_HEADERS)) {
         throw new InvalidCourseCsvException("CSV 헤더는 title,code,prof 형식이어야 합니다.");
       }
 

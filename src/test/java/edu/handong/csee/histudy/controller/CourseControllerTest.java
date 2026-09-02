@@ -57,6 +57,7 @@ class CourseControllerTest {
 
   @Test
   void 관리자가_강의목록업로드시_성공() throws Exception {
+    // Given
     Claims claims = adminClaims("admin@test.com");
 
     MockMultipartFile file =
@@ -68,18 +69,70 @@ class CourseControllerTest {
 
     doNothing().when(courseService).replaceCourses(any());
 
+    // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isCreated());
+    verify(courseService).replaceCourses(any());
+  }
+
+  @Test
+  void 관리자가_Content_Type_주변공백이_있는_CSV를_강의목록업로드하면_성공한다() throws Exception {
+    // Given
+    Claims claims = adminClaims("admin@test.com");
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "courses.csv", "text/csv ; charset=utf-8", "title,code,prof\r\n자료구조,CSE201,김교수\r\n".getBytes());
+    doNothing().when(courseService).replaceCourses(any());
+
+    // When Then
+    mockMvc
+        .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
+        .andExpect(status().isCreated());
+    verify(courseService).replaceCourses(any());
+  }
+
+  @Test
+  void 관리자가_일반적인_MIME타입의_CSV를_강의목록업로드하면_성공한다() throws Exception {
+    // Given
+    Claims claims = adminClaims("admin@test.com");
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "courses.csv", "application/octet-stream", "title,code,prof\r\n자료구조,CSE201,김교수\r\n".getBytes());
+    doNothing().when(courseService).replaceCourses(any());
+
+    // When Then
+    mockMvc
+        .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
+        .andExpect(status().isCreated());
+    verify(courseService).replaceCourses(any());
+  }
+
+  @Test
+  void 관리자가_헤더순서가_다른_CSV를_강의목록업로드하면_성공한다() throws Exception {
+    // Given
+    Claims claims = adminClaims("admin@test.com");
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "courses.csv", "text/csv", "prof,title,code\r\n김교수,자료구조,CSE201\r\n".getBytes());
+    doNothing().when(courseService).replaceCourses(any());
+
+    // When Then
+    mockMvc
+        .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
+        .andExpect(status().isCreated());
+    verify(courseService).replaceCourses(any());
   }
 
   @Test
   void 관리자가_CSV가_아닌_파일을_강의목록업로드하면_실패한다() throws Exception {
+    // Given
     Claims claims = adminClaims("admin@test.com");
 
     MockMultipartFile file =
         new MockMultipartFile("file", "courses.xlsx", "application/vnd.ms-excel", "data".getBytes());
 
+    // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isBadRequest())
@@ -89,12 +142,14 @@ class CourseControllerTest {
 
   @Test
   void 관리자가_필수헤더가_없는_CSV를_강의목록업로드하면_실패한다() throws Exception {
+    // Given
     Claims claims = adminClaims("admin@test.com");
 
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "courses.csv", "text/csv", "name,number,teacher\r\n자료구조,CSE201,김교수\r\n".getBytes());
 
+    // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isBadRequest())
@@ -104,11 +159,13 @@ class CourseControllerTest {
 
   @Test
   void 관리자가_데이터행이_없는_CSV를_강의목록업로드하면_실패한다() throws Exception {
+    // Given
     Claims claims = adminClaims("admin@test.com");
 
     MockMultipartFile file =
         new MockMultipartFile("file", "courses.csv", "text/csv", "title,code,prof\r\n".getBytes());
 
+    // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isBadRequest())
@@ -118,6 +175,7 @@ class CourseControllerTest {
 
   @Test
   void 관리자가_추가열이_있는_CSV를_강의목록업로드하면_실패한다() throws Exception {
+    // Given
     Claims claims = adminClaims("admin@test.com");
 
     MockMultipartFile file =
@@ -127,6 +185,7 @@ class CourseControllerTest {
             "text/csv",
             "title,code,prof\r\n자료구조,CSE201,김교수,추가값\r\n".getBytes());
 
+    // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isBadRequest())
@@ -136,11 +195,13 @@ class CourseControllerTest {
 
   @Test
   void 관리자가_빈파일업로드시_실패() throws Exception {
+    // Given
     Claims claims = adminClaims("admin@test.com");
 
     MockMultipartFile file =
         new MockMultipartFile("file", "courses.csv", "text/csv", "".getBytes());
 
+    // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isNotAcceptable());
