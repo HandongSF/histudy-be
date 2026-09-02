@@ -60,13 +60,78 @@ class CourseControllerTest {
     Claims claims = adminClaims("admin@test.com");
 
     MockMultipartFile file =
-        new MockMultipartFile("file", "courses.csv", "text/csv", "course content".getBytes());
+        new MockMultipartFile(
+            "file",
+            "courses.csv",
+            "text/csv",
+            "title,code,prof\r\n자료구조,CSE201,김교수\r\n".getBytes());
 
     doNothing().when(courseService).replaceCourses(any());
 
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isCreated());
+  }
+
+  @Test
+  void 관리자가_CSV가_아닌_파일을_강의목록업로드하면_실패한다() throws Exception {
+    Claims claims = adminClaims("admin@test.com");
+
+    MockMultipartFile file =
+        new MockMultipartFile("file", "courses.xlsx", "application/vnd.ms-excel", "data".getBytes());
+
+    mockMvc
+        .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("CSV 파일만 업로드할 수 있습니다."));
+    verify(courseService, never()).replaceCourses(any());
+  }
+
+  @Test
+  void 관리자가_필수헤더가_없는_CSV를_강의목록업로드하면_실패한다() throws Exception {
+    Claims claims = adminClaims("admin@test.com");
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "courses.csv", "text/csv", "name,number,teacher\r\n자료구조,CSE201,김교수\r\n".getBytes());
+
+    mockMvc
+        .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("CSV 헤더는 title,code,prof 형식이어야 합니다."));
+    verify(courseService, never()).replaceCourses(any());
+  }
+
+  @Test
+  void 관리자가_데이터행이_없는_CSV를_강의목록업로드하면_실패한다() throws Exception {
+    Claims claims = adminClaims("admin@test.com");
+
+    MockMultipartFile file =
+        new MockMultipartFile("file", "courses.csv", "text/csv", "title,code,prof\r\n".getBytes());
+
+    mockMvc
+        .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("CSV 파일에 수업 데이터가 없습니다."));
+    verify(courseService, never()).replaceCourses(any());
+  }
+
+  @Test
+  void 관리자가_추가열이_있는_CSV를_강의목록업로드하면_실패한다() throws Exception {
+    Claims claims = adminClaims("admin@test.com");
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file",
+            "courses.csv",
+            "text/csv",
+            "title,code,prof\r\n자료구조,CSE201,김교수,추가값\r\n".getBytes());
+
+    mockMvc
+        .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("CSV 데이터는 title,code,prof 세 열만 허용합니다."));
+    verify(courseService, never()).replaceCourses(any());
   }
 
   @Test

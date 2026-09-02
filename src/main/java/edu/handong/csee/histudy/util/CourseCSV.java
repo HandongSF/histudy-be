@@ -2,6 +2,7 @@ package edu.handong.csee.histudy.util;
 
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
+import edu.handong.csee.histudy.exception.InvalidCourseCsvException;
 import lombok.Builder;
 import org.apache.commons.csv.CSVRecord;
 
@@ -22,8 +23,8 @@ public class CourseCSV {
   private static String validateAndTrim(String value, String fieldName, long recordNumber) {
     String trimmed = value != null ? value.trim() : null;
     if (trimmed == null || trimmed.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Missing or empty required field '" + fieldName + "' in CSV record " + recordNumber);
+      throw new InvalidCourseCsvException(
+          "CSV 데이터의 " + fieldName + " 값은 비어 있을 수 없습니다. (행 " + recordNumber + ")");
     }
     return trimmed;
   }

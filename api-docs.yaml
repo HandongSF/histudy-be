@@ -295,8 +295,14 @@ paths:
                   type: string
                   format: binary
       responses:
-        '200':
-          description: OK
+        '201':
+          description: 현재 학기의 강의 목록을 교체했습니다.
+        '400':
+          description: CSV 확장자, 헤더 또는 데이터 형식이 올바르지 않습니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionResponse'
         '409':
           description: 현재 학기 강의가 신청, 그룹 또는 리포트에서 사용 중입니다.
           content:
@@ -843,7 +849,7 @@ paths:
       operationId: downloadCourseTemplate
       responses:
         '200':
-          description: UTF-8 CSV 업로드 양식 파일
+          description: 예시 수업 1행이 포함된 UTF-8 CSV 업로드 양식 파일입니다. 업로드 전 예시 행을 삭제해야 합니다.
           headers:
             Content-Disposition:
               schema:
