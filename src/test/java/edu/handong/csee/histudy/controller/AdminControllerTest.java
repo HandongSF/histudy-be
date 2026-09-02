@@ -279,7 +279,9 @@ class AdminControllerTest {
   void 관리자가_과목업로드양식다운로드시_CSV파일을_반환한다() throws Exception {
     // Given
     Claims claims = adminClaims("admin@test.com");
-    String expectedContent = "\uFEFFtitle,code,prof\r\n";
+    String expectedContent =
+        "\uFEFFtitle,code,prof\r\n"
+            + "\"Software Engineering\",ITP40002,남재창\r\n";
 
     // When
     mockMvc
