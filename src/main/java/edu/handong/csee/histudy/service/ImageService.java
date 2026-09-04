@@ -70,7 +70,7 @@ public class ImageService {
         return imagePathMapper.getFullPath(sameResource.get());
       }
     }
-    int year = Utils.getCurrentYear();
+    int year = currentTerm.getAcademicYear();
     int semester = currentTerm.getSemester().getNumber();
     String formattedDateTime = Utils.getCurrentFormattedDateTime("yyyyMMdd_HHmmss");
 

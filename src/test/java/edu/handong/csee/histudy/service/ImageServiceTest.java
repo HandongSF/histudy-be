@@ -136,7 +136,7 @@ class ImageServiceTest {
   void 동계학기_보고서_이미지_업로드시_도메인_학기번호를_파일명에_사용한다() throws Exception {
     // Given
     AcademicTerm winterTerm =
-        AcademicTerm.builder().academicYear(2025).semester(TermType.WINTER).isCurrent(true).build();
+        AcademicTerm.builder().academicYear(2024).semester(TermType.WINTER).isCurrent(true).build();
     academicTermRepository.save(winterTerm);
     User member = userRepository.save(memberUser);
     Course course =
@@ -156,7 +156,7 @@ class ImageServiceTest {
         imageService.getImagePaths("member@histudy.com", multipartFile, Optional.empty());
 
     // Then
-    assertThat(result).contains("-4-group07-report_");
+    assertThat(result).contains("2024-4-group07-report_");
   }
 
   @Test
