@@ -106,6 +106,60 @@ class ImageServiceTest {
   }
 
   @Test
+  void 하계학기_보고서_이미지_업로드시_도메인_학기번호를_파일명에_사용한다() throws Exception {
+    // Given
+    AcademicTerm summerTerm =
+        AcademicTerm.builder().academicYear(2025).semester(TermType.SUMMER).isCurrent(true).build();
+    academicTermRepository.save(summerTerm);
+    User member = userRepository.save(memberUser);
+    Course course =
+        Course.builder()
+            .name("자료구조")
+            .code("CSEE201")
+            .professor("Kim")
+            .academicTerm(summerTerm)
+            .build();
+    StudyApplicant applicant = StudyApplicant.of(summerTerm, member, List.of(), List.of(course));
+    studyGroupRepository.save(StudyGroup.of(7, summerTerm, List.of(applicant)));
+    MockMultipartFile multipartFile =
+        new MockMultipartFile("image", "report.png", "image/png", pngBytes);
+
+    // When
+    String result =
+        imageService.getImagePaths("member@histudy.com", multipartFile, Optional.empty());
+
+    // Then
+    assertThat(result).contains("-3-group07-report_");
+  }
+
+  @Test
+  void 동계학기_보고서_이미지_업로드시_도메인_학기번호를_파일명에_사용한다() throws Exception {
+    // Given
+    AcademicTerm winterTerm =
+        AcademicTerm.builder().academicYear(2025).semester(TermType.WINTER).isCurrent(true).build();
+    academicTermRepository.save(winterTerm);
+    User member = userRepository.save(memberUser);
+    Course course =
+        Course.builder()
+            .name("자료구조")
+            .code("CSEE201")
+            .professor("Kim")
+            .academicTerm(winterTerm)
+            .build();
+    StudyApplicant applicant = StudyApplicant.of(winterTerm, member, List.of(), List.of(course));
+    studyGroupRepository.save(StudyGroup.of(7, winterTerm, List.of(applicant)));
+    MockMultipartFile multipartFile =
+        new MockMultipartFile("image", "report.png", "image/png", pngBytes);
+
+    // When
+    String result =
+        imageService.getImagePaths("member@histudy.com", multipartFile, Optional.empty());
+
+    // Then
+    assertThat(result).contains("-4-group07-report_");
+  }
+
+  @Test
   void 동일한_이미지를_업로드하면_기존_이미지경로를_재사용한다() throws Exception {
     // Given
     academicTermRepository.save(currentTerm);

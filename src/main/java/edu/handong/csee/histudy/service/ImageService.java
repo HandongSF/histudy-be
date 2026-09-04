@@ -71,14 +71,14 @@ public class ImageService {
       }
     }
     int year = Utils.getCurrentYear();
-    int semester = Utils.getCurrentSemester();
+    int semester = currentTerm.getSemester().getNumber();
     String formattedDateTime = Utils.getCurrentFormattedDateTime("yyyyMMdd_HHmmss");
 
     String originalName = Objects.requireNonNullElse(imageAsFormData.getOriginalFilename(), ".jpg");
     String extension = originalName.substring(originalName.lastIndexOf("."));
 
-    // yyyy-{1|2}-group{%02d}-report_{yyyyMMdd}_{HHmmss}.{extension}
-    // e.g. 2023-2-group1-report_20230923_123456.jpg
+    // yyyy-{1|2|3|4}-group{%02d}-report_{yyyyMMdd}_{HHmmss}.{extension}
+    // e.g. 2023-2-group07-report_20230923_123456.jpg
     String pathname =
         String.format(
             REPORTS + "%d-%d-group%02d-report_%s%s",
