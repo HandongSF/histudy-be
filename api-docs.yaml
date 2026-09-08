@@ -1479,6 +1479,11 @@ components:
           example: 1
     ExceptionResponse:
       type: object
+      required:
+        - code
+        - error
+        - message
+        - requestId
       properties:
         code:
           type: integer
@@ -1490,13 +1495,16 @@ components:
         message:
           type: string
           example: 사용 중인 강의는 삭제할 수 없습니다.
-        trace:
-          type: string
-          nullable: true
         requestId:
           type: string
           description: Request identifier for correlating the error response with server logs
           example: 550e8400-e29b-41d4-a716-446655440000
+        errorId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Diagnostic identifier for correlating a 5xx response with internal error logs; omitted for 4xx responses
+          example: 7f1c2d3e-4a5b-678c-9d0e-f1a2b3c4d5e6
     TokenForm:
       type: object
       properties:

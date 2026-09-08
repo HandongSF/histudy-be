@@ -6,12 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import java.io.IOException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.mock.web.MockFilterChain;
@@ -23,6 +25,7 @@ class RequestLoggingFilterTest {
 
   private static final String REQUEST_ID_HEADER = "X-Request-ID";
   private static final String REQUEST_ID_MDC_KEY = "request_id";
+  private static final String CLAIMS_ATTRIBUTE = "claims";
 
   private final RequestLoggingFilter filter = new RequestLoggingFilter();
 
@@ -48,6 +51,7 @@ class RequestLoggingFilterTest {
     // given
     MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/test");
     request.addHeader(REQUEST_ID_HEADER, "request-123");
+    request.setQueryString("token=secret-token-value");
     request.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/test");
     MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -64,10 +68,60 @@ class RequestLoggingFilterTest {
                   .contains("http_request")
                   .contains("request_id=\"request-123\"")
                   .contains("method=\"GET\"")
-                  .contains("path=\"/api/test\"")
+                  .contains("route=\"/api/test\"")
+                  .contains("role=\"anonymous\"")
+                  .doesNotContain("path=")
+                  .doesNotContain("secret-token-value")
+                  .containsPattern("duration_ms=\\d+")
                   .contains("status=200");
               assertThat(event.getMDCPropertyMap()).containsEntry(REQUEST_ID_MDC_KEY, "request-123");
             });
+  }
+
+  @Test
+  void 인증된_사용자의_역할을_요청_완료_로그에_남긴다() throws Exception {
+    // given
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/admin/users/42");
+    request.setAttribute(
+        HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/admin/users/{userId}");
+    Claims claims = Mockito.mock(Claims.class);
+    Mockito.when(claims.get("rol", String.class)).thenReturn("ADMIN");
+    request.setAttribute(CLAIMS_ATTRIBUTE, claims);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    // when
+    filter.doFilter(request, response, new MockFilterChain());
+
+    // then
+    assertThat(logAppender.list)
+        .anySatisfy(
+            event ->
+                assertThat(event.getFormattedMessage())
+                    .contains("route=\"/api/admin/users/{userId}\"")
+                    .contains("role=\"ADMIN\"")
+                    .doesNotContain("/api/admin/users/42"));
+  }
+
+  @Test
+  void 역할_클레임을_읽을_수_없으면_요청을_중단하지_않고_unknown으로_기록한다() throws Exception {
+    // given
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/admin/users/42");
+    request.setAttribute(
+        HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/admin/users/{userId}");
+    Claims claims = Mockito.mock(Claims.class);
+    Mockito.when(claims.get("rol", String.class))
+        .thenThrow(new IllegalArgumentException("invalid role claim"));
+    request.setAttribute(CLAIMS_ATTRIBUTE, claims);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    // when
+    filter.doFilter(request, response, new MockFilterChain());
+
+    // then
+    assertThat(response.getStatus()).isEqualTo(200);
+    assertThat(logAppender.list)
+        .anySatisfy(
+            event -> assertThat(event.getFormattedMessage()).contains("role=\"unknown\""));
   }
 
   @Test

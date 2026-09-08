@@ -52,12 +52,18 @@ public class ExceptionController {
 
   private ResponseEntity<ExceptionResponse> createErrorResponse(
       HttpStatus status, String message, String requestId) {
+    return createErrorResponse(status, message, requestId, null);
+  }
+
+  private ResponseEntity<ExceptionResponse> createErrorResponse(
+      HttpStatus status, String message, String requestId, String errorId) {
     return ResponseEntity.status(status)
         .body(
             ExceptionResponse.builder()
                 .status(status)
                 .message(message)
                 .requestId(requestId)
+                .errorId(errorId)
                 .build());
   }
 
@@ -137,14 +143,16 @@ public class ExceptionController {
   @ExceptionHandler(RuntimeException.class)
   public ResponseEntity<ExceptionResponse> runtimeException(Exception e, WebRequest request) {
     String requestId = resolveRequestId(request);
+    String errorId = UUID.randomUUID().toString();
     log.error(
-        "unhandled_exception request_id={} exception_type={}",
+        "unhandled_exception request_id={} error_id={} exception_type={}",
         requestId,
+        errorId,
         e.getClass().getSimpleName(),
         e);
-    discordService.notifyException(e, request);
+    discordService.notifyException(e, request, requestId, errorId);
     return createErrorResponse(
-        HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.", requestId);
+        HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.", requestId, errorId);
   }
 
   private String resolveRequestId(WebRequest request) {

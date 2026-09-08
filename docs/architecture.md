@@ -67,8 +67,9 @@
 
 - `X-Request-ID`를 검증하거나 새로 발급하고 응답 헤더에 반환합니다.
 - 요청 처리 중에는 `request_id`를 MDC에 넣어 애플리케이션 로그와 연결합니다.
-- 요청 완료 시 method, path, route, status, duration을 기록하고 MDC를 정리합니다.
-- 요청 본문과 인증 토큰은 공통 요청 로그에 기록하지 않습니다.
+- 요청 완료 시 method, route, status, duration, role을 기록하고 MDC를 정리합니다.
+- 원시 경로, 쿼리, 요청 본문과 인증 토큰은 공통 요청 로그에 기록하지 않습니다.
+- 컨트롤러에서 처리되지 않은 예외에는 `error_id`를 발급해 오류 응답·내부 stack trace·장애 알림을 연결합니다.
 
 인증 포함/제외 경로는 `application.yml`의 다음 설정으로 제어됩니다.
 
