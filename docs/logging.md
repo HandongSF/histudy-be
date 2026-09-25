@@ -59,3 +59,29 @@ HTTP 요청/응답 헤더와 예외 응답의 `requestId`에도 같은 식별자
 예외 메시지 원문은 공통 구조화 필드와 외부 장애 알림에 기록하거나 전송하지 않습니다. 5xx
 stack trace는 서버 내부 로그에만 남기고 Discord 알림에는 `error_id`, `request_id`, 예외 유형과
 HTTP 메서드만 전송합니다.
+
+## 매칭 실행 감사 로그
+
+`matching_executed`는 관리자 매칭의 완료 결과를 INFO로 한 번 기록합니다. DB 트랜잭션이
+커밋된 이후에만 출력하며 롤백, 저장 실패, 현재 학기 부재에는 출력하지 않습니다.
+실패는 기존 HTTP·예외 로그로 추적합니다. 트랜잭션 밖에서 발행한 이벤트도 출력하지 않습니다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `request_id`, `actor_id`, `role` | 요청 ID, 관리자 내부 사용자 ID, 검증된 JWT 역할 |
+| `academic_term_id` | 매칭 대상 학기 ID |
+| `result` | 그룹 생성 시 `success`, 변경 없으면 `no_op` |
+| `reason_code` | no_op에만 포함: 신청자 없음 `NO_UNASSIGNED_APPLICANTS`, 그룹 구성 불가 `NO_ELIGIBLE_GROUPS` |
+| `applicant_count` | 실행 시작 시 미배정 신청자 수 |
+| `assigned_count`, `remaining_count` | 이번 실행의 배정·미배정 인원; 합계는 applicant_count |
+| `created_group_count` | 이번 실행에서 생성한 그룹 수, 기존 그룹 제외 |
+| `duration_ms` | 서비스 진입부터 이벤트 생성까지; 커밋·로그 출력 시간 제외 |
+
+일부 신청자가 남아도 그룹이 생성되면 success입니다. 행위자는 권한 검사 이후 JWT subject의
+이메일로 조회하되 이메일은 이벤트나 로그에 보관하지 않습니다. 사용자 또는 subject가 없으면
+actor_id=unknown으로 기존 매칭 동작을 유지하며 DB 조회 장애는 숨기지 않습니다. 요청 ID가
+없으면 unknown으로 기록합니다. 이벤트에는 ID와 집계값만 복사하며 커밋 이후 엔티티나 MDC를
+다시 읽지 않습니다. 신청자 목록·친구 관계·과목 목록·개인정보는 포함하지 않습니다.
+
+출력은 기존 콘솔·파일 로그를 사용합니다. 커밋 이후 출력이므로 DB와 감사 로그의 원자적
+영구 보존은 보장하지 않습니다.

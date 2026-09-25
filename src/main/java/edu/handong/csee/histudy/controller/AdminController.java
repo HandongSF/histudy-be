@@ -8,16 +8,17 @@ import edu.handong.csee.histudy.dto.TeamReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.ForbiddenException;
 import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
+import edu.handong.csee.histudy.observability.audit.AuditContextResolver;
 import edu.handong.csee.histudy.service.AcademicTermService;
 import edu.handong.csee.histudy.service.TeamService;
 import edu.handong.csee.histudy.service.UserService;
 import edu.handong.csee.histudy.util.CourseCSVTemplate;
 import io.jsonwebtoken.Claims;
 import java.util.List;
-import org.springframework.http.HttpHeaders;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +30,7 @@ public class AdminController {
   private final UserService userService;
   private final AcademicTermService academicTermService;
   private final MatchingApplicationService matchingApplicationService;
+  private final AuditContextResolver auditContextResolver;
 
   @GetMapping(value = "/manageGroup")
   public ResponseEntity<List<TeamDto>> getTeams(@RequestAttribute Claims claims) {
@@ -68,7 +70,7 @@ public class AdminController {
   @PostMapping("/team-match")
   public ResponseEntity<Void> matchTeam(@RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      matchingApplicationService.match();
+      matchingApplicationService.match(auditContextResolver.resolve(claims.getSubject(), Role.ADMIN));
       return ResponseEntity.status(HttpStatus.CREATED).build();
     }
     throw new ForbiddenException();
