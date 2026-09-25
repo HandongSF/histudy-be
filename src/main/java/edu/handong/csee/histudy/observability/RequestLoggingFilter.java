@@ -1,5 +1,7 @@
 package edu.handong.csee.histudy.observability;
 
+import edu.handong.csee.histudy.domain.Role;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletException;
@@ -18,6 +20,10 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
   private static final String REQUEST_ID_HEADER = "X-Request-ID";
   private static final String REQUEST_ID_MDC_KEY = "request_id";
+  private static final String CLAIMS_ATTRIBUTE = "claims";
+  private static final String ANONYMOUS_ROLE = "anonymous";
+  private static final String UNKNOWN_ROLE = "unknown";
+  private static final String UNKNOWN_ROUTE = "UNKNOWN";
   private static final String REQUEST_ID_ATTRIBUTE =
       RequestLoggingFilter.class.getName() + ".requestId";
   private static final Pattern REQUEST_ID_PATTERN =
@@ -50,13 +56,13 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
       try {
         if (!errorDispatch) {
           log.info(
-              "http_request request_id=\"{}\" method=\"{}\" path=\"{}\" route=\"{}\" status={} duration_ms={}",
+              "http_request request_id=\"{}\" method=\"{}\" route=\"{}\" status={} duration_ms={} role=\"{}\"",
               requestId,
               request.getMethod(),
-              request.getRequestURI(),
               resolveRoute(request),
               status,
-              elapsedMilliseconds(startedAt));
+              elapsedMilliseconds(startedAt),
+              resolveRole(request));
         }
       } finally {
         MDC.remove(REQUEST_ID_MDC_KEY);
@@ -80,7 +86,24 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
   private String resolveRoute(HttpServletRequest request) {
     Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-    return route instanceof String ? (String) route : request.getRequestURI();
+    return route instanceof String && !((String) route).isBlank() ? (String) route : UNKNOWN_ROUTE;
+  }
+
+  private String resolveRole(HttpServletRequest request) {
+    Object claimsAttribute = request.getAttribute(CLAIMS_ATTRIBUTE);
+    if (!(claimsAttribute instanceof Claims)) {
+      return ANONYMOUS_ROLE;
+    }
+
+    try {
+      String role = ((Claims) claimsAttribute).get("rol", String.class);
+      if (role == null) {
+        return UNKNOWN_ROLE;
+      }
+      return Role.valueOf(role).name();
+    } catch (RuntimeException exception) {
+      return UNKNOWN_ROLE;
+    }
   }
 
   private long elapsedMilliseconds(long startedAt) {

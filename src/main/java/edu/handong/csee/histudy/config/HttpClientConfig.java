@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
@@ -17,13 +18,23 @@ public class HttpClientConfig {
   @Value("${custom.webhook.discord:}")
   private String discordWebhookUrlOr;
 
+  @Value("${custom.webhook.discord-timeout-ms:3000}")
+  private int discordWebhookTimeoutMs;
+
   @Bean
   public DiscordClient discordClient() {
     if (!StringUtils.hasText(discordWebhookUrlOr)) {
       return createNoOpClient();
     }
     try {
-      RestClient client = RestClient.builder().baseUrl(discordWebhookUrlOr).build();
+      SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+      requestFactory.setConnectTimeout(discordWebhookTimeoutMs);
+      requestFactory.setReadTimeout(discordWebhookTimeoutMs);
+      RestClient client =
+          RestClient.builder()
+              .baseUrl(discordWebhookUrlOr)
+              .requestFactory(requestFactory)
+              .build();
       RestClientAdapter adapter = RestClientAdapter.create(client);
       HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter).build();
 

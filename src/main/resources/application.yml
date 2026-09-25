@@ -67,3 +67,5 @@ custom:
     # Define webhook URL for exception notifications.
     ## - discord: The Discord webhook URL.
     discord: ${WEBHOOK_DISCORD:}
+    ## - discord-timeout-ms: Discord webhook connection/read timeout in milliseconds.
+    discord-timeout-ms: ${WEBHOOK_DISCORD_TIMEOUT_MS:3000}
