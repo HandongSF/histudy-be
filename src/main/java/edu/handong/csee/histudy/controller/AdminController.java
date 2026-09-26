@@ -95,7 +95,7 @@ public class AdminController {
   @DeleteMapping("/form")
   public void deleteForm(@RequestParam String sid, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      userService.deleteUserForm(sid);
+      userService.deleteUserForm(sid, auditContextResolver.resolve(claims.getSubject(), Role.ADMIN));
       return;
     }
     throw new ForbiddenException();

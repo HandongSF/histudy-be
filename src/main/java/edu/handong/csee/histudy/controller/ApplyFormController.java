@@ -10,6 +10,7 @@ import edu.handong.csee.histudy.exception.ForbiddenException;
 import edu.handong.csee.histudy.service.UserService;
 import edu.handong.csee.histudy.service.command.LegacyStudyApplicationCommand;
 import io.jsonwebtoken.Claims;
+import edu.handong.csee.histudy.observability.audit.AuditContextResolver;
 import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ApplyFormController {
 
   private final UserService userService;
+  private final AuditContextResolver auditContextResolver;
 
   /**
    * 스터디 신청 정보를 등록하는 API
@@ -40,7 +42,8 @@ public class ApplyFormController {
     if (Role.isAuthorized(claims, Role.USER)) {
       LegacyStudyApplicationCommand command =
           new LegacyStudyApplicationCommand(form.getFriendIds(), form.getCourseIds());
-      return ResponseEntity.ok(userService.apply(command, claims.getSubject()));
+      return ResponseEntity.ok(userService.apply(command, claims.getSubject(),
+          auditContextResolver.resolve(claims.getSubject(), Role.USER)));
     }
     throw new ForbiddenException();
   }
@@ -59,7 +62,8 @@ public class ApplyFormController {
       @RequestBody ApplyFormV2 form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.USER)) {
       StudyApplicant submittedForm =
-          userService.apply(form.getFriendIds(), form.getCourseIds(), claims.getSubject());
+          userService.apply(form.getFriendIds(), form.getCourseIds(), claims.getSubject(),
+              auditContextResolver.resolve(claims.getSubject(), Role.USER));
 
       return ResponseEntity.ok(
           new ApplyFormDto(
