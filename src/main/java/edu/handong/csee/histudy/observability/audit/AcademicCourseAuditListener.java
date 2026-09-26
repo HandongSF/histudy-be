@@ -39,7 +39,7 @@ public class AcademicCourseAuditListener {
   public void onRejected(CourseChangeRejectedEvent event) {
     log.info("{} {} academic_term_id={}{} result=rejected reason_code=COURSE_IN_USE",
         event.courseId() == null ? "courses_replaced" : "course_deleted", context(event.context()),
-        event.academicTermId(), event.courseId() == null ? "" : " course_id=" + event.courseId());
+        value(event.academicTermId()), event.courseId() == null ? "" : " course_id=" + event.courseId());
   }
 
   private String context(AuditContext context) {

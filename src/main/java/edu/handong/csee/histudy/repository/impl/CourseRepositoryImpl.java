@@ -25,6 +25,11 @@ public class CourseRepositoryImpl implements CourseRepository {
   }
 
   @Override
+  public long countByAcademicTerm(AcademicTerm academicTerm) {
+    return repository.countByAcademicTerm(academicTerm);
+  }
+
+  @Override
   public List<Course> saveAll(List<Course> entities) {
     return repository.saveAll(entities);
   }

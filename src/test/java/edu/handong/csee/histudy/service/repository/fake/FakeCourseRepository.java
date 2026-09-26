@@ -30,6 +30,11 @@ public class FakeCourseRepository implements CourseRepository {
   }
 
   @Override
+  public long countByAcademicTerm(AcademicTerm academicTerm) {
+    return store.stream().filter(course -> academicTerm.equals(course.getAcademicTerm())).count();
+  }
+
+  @Override
   public List<Course> saveAll(List<Course> entities) {
     entities.forEach(
         course -> {

@@ -191,7 +191,7 @@ class AcademicCourseAuditListenerTest {
     // when
     publisher.publishEvent(new AcademicTermCreatedEvent(context, termId));
     publisher.publishEvent(new CurrentTermChangedEvent(context, termId, termId, false));
-    publisher.publishEvent(new CoursesReplacedEvent(context, termId, 1, 1, true));
+    publisher.publishEvent(new CoursesReplacedEvent(context, termId, 1L, 1, true));
     publisher.publishEvent(new CourseDeletedEvent(context, termId, courseId, true, false));
     // then
     assertThat(appender.list).isEmpty();

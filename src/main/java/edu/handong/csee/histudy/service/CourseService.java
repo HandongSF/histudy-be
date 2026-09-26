@@ -42,9 +42,7 @@ public class CourseService {
       throw new CourseInUseException();
     }
 
-    int previousCount = (int) courseRepository.findAllByAcademicTermIsCurrentTrue().stream()
-        .filter(course -> course.getAcademicTerm().getAcademicTermId().equals(currentTerm.getAcademicTermId()))
-        .count();
+    long previousCount = courseRepository.countByAcademicTerm(currentTerm);
     courseRepository.deleteAllByAcademicTerm(currentTerm);
     courseRepository.saveAll(courses);
     publisher.publishEvent(new CoursesReplacedEvent(context, currentTerm.getAcademicTermId(), previousCount, courses.size(), true));
@@ -84,9 +82,10 @@ public class CourseService {
   @Transactional
   public int deleteCourse(CourseIdDto dto, AuditContext context) {
     Objects.requireNonNull(context, "context must not be null");
-    if (courseRepository.existsById(dto.getId())) {
-      Long termId = courseRepository.findById(dto.getId()).map(Course::getAcademicTerm)
-          .map(AcademicTerm::getAcademicTermId).orElse(null);
+    Course course = courseRepository.findById(dto.getId()).orElse(null);
+    if (course != null) {
+      Long termId = course.getAcademicTerm() == null
+          ? null : course.getAcademicTerm().getAcademicTermId();
       courseRepository.deleteById(dto.getId());
       publisher.publishEvent(new CourseDeletedEvent(context, termId, dto.getId(), true, true));
       return 1;

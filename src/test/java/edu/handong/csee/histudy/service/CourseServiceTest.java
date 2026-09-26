@@ -322,4 +322,46 @@ class CourseServiceTest {
     assertThat(courseRepository.findAll()).containsExactly(saved);
     assertThat(events).isEmpty();
   }
+  @Test
+  void 구형삭제는_과거학기의_과목도_기존정책대로_삭제한다() {
+    // given
+    academicTermRepository.save(previousTerm);
+    Course saved = courseRepository.saveAll(List.of(previousCourse)).get(0);
+    courseRepository.markReferenced(saved.getCourseId());
+
+    // when
+    int result = courseService.deleteCourse(new CourseIdDto(saved.getCourseId()), context);
+
+    // then
+    assertThat(result).isEqualTo(1);
+    assertThat(courseRepository.findAll()).isEmpty();
+    assertThat(events).containsExactly(new CourseDeletedEvent(
+        context, previousTerm.getAcademicTermId(), saved.getCourseId(), true, true));
+  }
+
+  @Test
+  void 구형삭제의_대상이_없으면_영과_변경없음_이벤트를_반환한다() {
+    // given
+    Long missingId = 999L;
+
+    // when
+    int result = courseService.deleteCourse(new CourseIdDto(missingId), context);
+
+    // then
+    assertThat(result).isZero();
+    assertThat(events).containsExactly(new CourseDeletedEvent(context, null, missingId, false, true));
+  }
+
+  @Test
+  void 구형삭제는_학기가_없는_과목의_성공도_기록한다() {
+    // given
+    Course saved = courseRepository.saveAll(List.of(Course.builder().name("과목").build())).get(0);
+
+    // when
+    int result = courseService.deleteCourse(new CourseIdDto(saved.getCourseId()), context);
+
+    // then
+    assertThat(result).isEqualTo(1);
+    assertThat(events).containsExactly(new CourseDeletedEvent(context, null, saved.getCourseId(), true, true));
+  }
 }
