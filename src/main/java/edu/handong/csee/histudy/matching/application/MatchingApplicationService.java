@@ -11,6 +11,7 @@ import edu.handong.csee.histudy.repository.AcademicTermRepository;
 import edu.handong.csee.histudy.repository.StudyApplicantRepository;
 import edu.handong.csee.histudy.repository.StudyGroupRepository;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class MatchingApplicationService {
   private final MatchingPolicy matchingPolicy = new MatchingPolicy();
 
   public void match(AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     long startedAt = System.nanoTime();
     AcademicTerm currentTerm =
         academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);

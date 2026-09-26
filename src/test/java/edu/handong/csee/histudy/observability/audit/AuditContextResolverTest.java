@@ -68,4 +68,14 @@ class AuditContextResolverTest {
     // when then
     assertThatThrownBy(() -> resolver.resolve("admin@example.com", Role.ADMIN)).isSameAs(failure);
   }
+  @Test
+  void 필수_문맥이_없으면_생성시점에_거절한다() {
+    // given when then
+    assertThatThrownBy(() -> new AuditContext("request", 1L, null))
+        .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> new MatchingExecutedEvent(null, 1L, 0, 0, 0, 0))
+        .isInstanceOf(NullPointerException.class);
+    assertThat(new AuditContext(null, null, Role.ADMIN).requestId()).isEqualTo("unknown");
+  }
+
 }

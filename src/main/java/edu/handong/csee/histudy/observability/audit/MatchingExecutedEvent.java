@@ -1,5 +1,7 @@
 package edu.handong.csee.histudy.observability.audit;
 
+import java.util.Objects;
+
 public record MatchingExecutedEvent(
     AuditContext context,
     Long academicTermId,
@@ -7,6 +9,10 @@ public record MatchingExecutedEvent(
     int assignedCount,
     int createdGroupCount,
     long durationMs) {
+
+  public MatchingExecutedEvent {
+    Objects.requireNonNull(context, "context must not be null");
+  }
 
   public int remainingCount() {
     return applicantCount - assignedCount;

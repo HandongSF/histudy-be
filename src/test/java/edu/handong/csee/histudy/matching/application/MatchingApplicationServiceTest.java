@@ -192,6 +192,19 @@ class MatchingApplicationServiceTest {
     assertThat(events).isEmpty();
   }
 
+  @Test
+  void 문맥이_null이면_매칭_조회전에_거절한다() {
+    // given
+    var terms = mock(edu.handong.csee.histudy.repository.AcademicTermRepository.class);
+    var applicants = mock(edu.handong.csee.histudy.repository.StudyApplicantRepository.class);
+    var groups = mock(StudyGroupRepository.class);
+    var publisher = mock(org.springframework.context.ApplicationEventPublisher.class);
+    var service = new MatchingApplicationService(terms, applicants, groups, publisher);
+    // when then
+    assertThatThrownBy(() -> service.match(null)).isInstanceOf(NullPointerException.class);
+    verifyNoInteractions(terms, applicants, groups, publisher);
+  }
+
   private StudyApplicant createApplicant(int sequence, Course course) {
     return StudyApplicant.of(currentTerm, createUser(sequence), List.of(), List.of(course));
   }
