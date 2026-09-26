@@ -164,11 +164,23 @@ class AdminControllerTest {
   void 관리자가_유저지원폼삭제시_성공() throws Exception {
     Claims claims = adminClaims("admin@test.com");
 
-    doNothing().when(userService).deleteUserForm(anyString());
+    AuditContext context = new AuditContext("request-delete", 42L, Role.ADMIN);
+    when(auditContextResolver.resolve("admin@test.com", Role.ADMIN)).thenReturn(context);
 
     mockMvc
         .perform(delete("/api/admin/form").requestAttr("claims", claims).param("sid", "22500101"))
         .andExpect(status().isOk());
+    verify(userService).deleteUserForm("22500101", context);
+  }
+
+  @Test
+  void 비관리자_신청삭제는_감사문맥조회_전에_거절한다() throws Exception {
+    // given
+    Claims claims = userClaims("user@test.com");
+    // when then
+    mockMvc.perform(delete("/api/admin/form").requestAttr("claims", claims).param("sid", "22500101"))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(userService, auditContextResolver);
   }
 
   @Test
