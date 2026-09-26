@@ -240,7 +240,7 @@ public class UserService {
     int deletedCount = 0;
     int preservedCount = 0;
     for (StudyGroup group : studyGroupRepository.findAllEmptyByAcademicTerm(currentTerm)) {
-      if (studyReportRepository.findAllByStudyGroupOrderByCreatedDateDesc(group).isEmpty()) {
+      if (!studyReportRepository.existsByStudyGroup(group)) {
         studyGroupRepository.deleteById(group.getStudyGroupId());
         deletedCount++;
       } else {

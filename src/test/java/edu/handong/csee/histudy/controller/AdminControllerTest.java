@@ -190,10 +190,11 @@ class AdminControllerTest {
   void 비관리자가_유저정보수정시_문맥조회와_편집을_실행하지_않는다() throws Exception {
     // given
     Claims claims = userClaims("user@test.com");
-    // when then
-    mockMvc.perform(post("/api/admin/edit-user").requestAttr("claims", claims)
-        .contentType(MediaType.APPLICATION_JSON).content("{\"id\":1}"))
-        .andExpect(status().isForbidden());
+    // when
+    var result = mockMvc.perform(post("/api/admin/edit-user").requestAttr("claims", claims)
+        .contentType(MediaType.APPLICATION_JSON).content("{\"id\":1}"));
+    // then
+    result.andExpect(status().isForbidden());
     verifyNoInteractions(userService, auditContextResolver);
   }
 

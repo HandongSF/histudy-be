@@ -11,6 +11,9 @@ import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.repository.impl.*;
 import edu.handong.csee.histudy.service.UserService;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -42,6 +45,7 @@ class GroupAuditListenerTest {
   private final AuditContext context = new AuditContext("request-edit", 42L, Role.ADMIN);
 
   @Autowired private EntityManager entityManager;
+  @Autowired private EntityManagerFactory entityManagerFactory;
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private UserService userService;
   @Autowired private ApplicationEventPublisher publisher;
@@ -81,21 +85,25 @@ class GroupAuditListenerTest {
     ((Logger) LoggerFactory.getLogger(GroupAuditListener.class)).detachAppender(appender);
     appender.stop();
     MDC.clear();
+    entityManagerFactory.unwrap(SessionFactory.class).getStatistics().setStatisticsEnabled(false);
   }
 
   @Test
   void 감사문맥이_없으면_편집전에_거절한다() {
     // given
-    // when then
-    assertThatThrownBy(() -> userService.editUser(form(null), null))
-        .isInstanceOf(NullPointerException.class);
+    UserDto.UserEdit form = form(null);
+    // when
+    Throwable editFailure = catchThrowable(() -> userService.editUser(form, null));
+    Throwable memberFailure = catchThrowable(
+        () -> new GroupMemberChangedEvent(null, termId, userId, groupId, null));
+    Throwable cleanupFailure = catchThrowable(() -> new EmptyGroupsCleanedEvent(null, termId, 1, 0));
+    // then
+    assertThat(editFailure).isInstanceOf(NullPointerException.class);
+    assertThat(memberFailure).isInstanceOf(NullPointerException.class);
+    assertThat(cleanupFailure).isInstanceOf(NullPointerException.class);
     StudyGroup retained = transaction.execute(status -> entityManager.find(StudyGroup.class, groupId));
     assertThat(retained).isNotNull();
     assertThat(appender.list).isEmpty();
-    assertThatThrownBy(() -> new GroupMemberChangedEvent(null, termId, userId, groupId, null))
-        .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> new EmptyGroupsCleanedEvent(null, termId, 1, 0))
-        .isInstanceOf(NullPointerException.class);
   }
 
   @Test
@@ -171,7 +179,7 @@ class GroupAuditListenerTest {
   }
 
   @Test
-  void 보고서가_있는_그룹을_비우면_보존건수를_기록한다() {
+  void 보고서가_있는_그룹을_비우면_보고서를_로딩하지_않고_보존건수를_기록한다() {
     // given
     transaction.executeWithoutResult(status -> {
       StudyReport report = StudyReport.builder().studyGroup(entityManager.find(StudyGroup.class, groupId))
@@ -180,14 +188,20 @@ class GroupAuditListenerTest {
           .images(List.of()).courses(List.of()).build();
       entityManager.persist(report);
     });
+    Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+    statistics.setStatisticsEnabled(true);
+    statistics.clear();
     // when
     userService.editUser(form(null), context);
     // then
+    assertThat(statistics.getEntityStatistics(StudyReport.class.getName()).getLoadCount()).isZero();
     assertThat(appender.list).hasSize(2);
     assertThat(appender.list.get(1).getFormattedMessage()).contains("deleted_group_count=0",
         "preserved_group_count=1").doesNotContain("private");
+    // when
     appender.list.clear();
     userService.editUser(form(null), context);
+    // then
     assertThat(appender.list).isEmpty();
   }
 
@@ -208,11 +222,13 @@ class GroupAuditListenerTest {
   @Test
   void 커밋의_flush가_실패하면_완료로그가_없다() {
     // given
-    // when then
-    assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
+    // when
+    Throwable failure = catchThrowable(() -> transaction.executeWithoutResult(status -> {
       userService.editUser(form(null), context);
       entityManager.find(User.class, userId).edit(null, "x".repeat(256));
-    })).isInstanceOf(RuntimeException.class);
+    }));
+    // then
+    assertThat(failure).isInstanceOf(RuntimeException.class);
     assertThat(appender.list).isEmpty();
   }
 
