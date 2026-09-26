@@ -1,6 +1,10 @@
 package edu.handong.csee.histudy.service;
 
+import edu.handong.csee.histudy.observability.audit.*;
+import java.util.ArrayList;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
@@ -67,6 +71,9 @@ class ReportServiceTest {
           .academicTerm(currentTerm)
           .build();
 
+  private final AuditContext context = new AuditContext("report-request", 1L, Role.MEMBER);
+  private final List<Object> events = new ArrayList<>();
+
   private FakeStudyReportRepository studyReportRepository;
   private FakeUserRepository userRepository;
   private FakeCourseRepository courseRepository;
@@ -91,7 +98,7 @@ class ReportServiceTest {
             courseRepository,
             studyGroupRepository,
             academicTermRepository,
-            imagePathMapper);
+            imagePathMapper, events::add);
   }
 
   @Test
@@ -115,7 +122,7 @@ class ReportServiceTest {
             List.of(savedPrimaryCourse.getCourseId()));
 
     // When
-    ReportDto.ReportInfo result = reportService.createReport(command, "member@histudy.com");
+    ReportDto.ReportInfo result = reportService.createReport(command, "member@histudy.com", context);
 
     // Then
     assertThat(studyReportRepository.findAll()).hasSize(1);
@@ -294,7 +301,7 @@ class ReportServiceTest {
 
     // When
     boolean updated =
-        reportService.updateReport(savedReport.getStudyReportId(), command, "member@histudy.com");
+        reportService.updateReport(savedReport.getStudyReportId(), command, "member@histudy.com", context);
 
     // Then
     assertThat(updated).isTrue();
@@ -341,9 +348,10 @@ class ReportServiceTest {
     // When
     boolean updated =
         reportService.updateReport(
-            otherReport.getStudyReportId(), command, "member@histudy.com");
+            otherReport.getStudyReportId(), command, "member@histudy.com", context);
 
     // Then
+    assertThat(events).singleElement().isInstanceOf(ReportChangeRejectedEvent.class);
     assertThat(updated).isFalse();
     assertThat(otherReport.getTitle()).isEqualTo("다른 그룹 보고서");
   }
@@ -373,12 +381,12 @@ class ReportServiceTest {
 
     // When
     boolean deleted =
-        reportService.deleteReport(savedReport.getStudyReportId(), "member@histudy.com");
+        reportService.deleteReport(savedReport.getStudyReportId(), "member@histudy.com", context);
 
     // Then
     assertThat(deleted).isTrue();
     assertThat(studyReportRepository.findAll()).isEmpty();
-    assertThat(reportService.deleteReport(999L, "member@histudy.com")).isFalse();
+    assertThat(reportService.deleteReport(999L, "member@histudy.com", context)).isFalse();
   }
 
   @Test
@@ -409,10 +417,26 @@ class ReportServiceTest {
 
     // When
     boolean deleted =
-        reportService.deleteReport(otherReport.getStudyReportId(), "member@histudy.com");
+        reportService.deleteReport(otherReport.getStudyReportId(), "member@histudy.com", context);
 
     // Then
+    assertThat(events).singleElement().isInstanceOf(ReportChangeRejectedEvent.class);
     assertThat(deleted).isFalse();
     assertThat(studyReportRepository.findById(otherReport.getStudyReportId())).isPresent();
+  }
+
+  @Test
+  void 감사문맥이_없으면_업무조회전에_거절한다() {
+    // given
+    ReportCommand command = new ReportCommand(null, null, null, List.of(), List.of(), List.of());
+    // when then
+    assertThatNullPointerException().isThrownBy(() ->
+        reportService.createReport(command, "missing@example.com", null));
+    assertThatNullPointerException().isThrownBy(() ->
+        reportService.updateReport(1L, command, "missing@example.com", null));
+    assertThatNullPointerException().isThrownBy(() ->
+        reportService.deleteReport(1L, "missing@example.com", null));
+    assertThat(studyReportRepository.findAll()).isEmpty();
+    assertThat(events).isEmpty();
   }
 }

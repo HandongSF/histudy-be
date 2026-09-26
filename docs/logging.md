@@ -86,6 +86,16 @@ actor_id=unknown으로 기존 매칭 동작을 유지하며 DB 조회 장애는 
 출력은 기존 콘솔·파일 로그를 사용합니다. 커밋 이후 출력이므로 DB와 감사 로그의 원자적
 영구 보존은 보장하지 않습니다.
 
+## 리포트 변경 감사 로그
+
+`report_created`, `report_updated`, `report_deleted`는 DB 커밋 이후 INFO로 한 건 기록한다.
+`request_id`, `actor_id`, `role`, `academic_term_id`, `group_id`, `report_id`, `result=success`,
+`participant_count`, `course_count`, `image_count`를 포함한다. 생성·수정은 변경 후 실제 연결 건수, 삭제는 삭제 전 건수를 뜻한다.
+수정·삭제 대상이 없거나 현재 그룹 소유가 아니면 즉시 같은 이벤트 이름에 `result=rejected reason_code=RESOURCE_UNAVAILABLE`을 기록한다.
+거절 로그는 요청한 `report_id`만 포함하고 타 그룹·학기·건수를 조회하거나 노출하지 않는다. 롤백에도 거절 시도 기록은 유지한다.
+성공은 외부 트랜잭션 롤백·flush 실패·트랜잭션 없는 발행에서는 기록되지 않는다. 이미지 파일 저장 자체는 이 이벤트의 범위가 아니다.
+이름·이메일·보고서 제목·본문·파일명·이미지 URL·참여자 목록은 이벤트와 로그에 포함하지 않는다.
+
 ## 학기·과목 감사 이벤트
 
 학기 생성과 전환, 과목 교체와 삭제는 관리자 권한 검사 뒤 확보한 `AuditContext`를 전달한다. 완료 이벤트는 DB 커밋 이후 INFO로 한 번 기록하며 외부 트랜잭션 롤백·flush 실패·트랜잭션 없는 이벤트 발행에서는 출력하지 않는다. `request_id`, `actor_id`, `role`은 발행 시점 값이며 행위자 부재는 `unknown`이다. CSV 원문·파일명·과목명·교수명·사용자 개인정보·예외 원문은 포함하지 않는다.
@@ -100,6 +110,7 @@ actor_id=unknown으로 기존 매칭 동작을 유지하며 DB 조회 장애는 
 `previous_count`는 선택된 현재 학기에 한정한 DB count 쿼리로 얻는 교체 전 과목 수(long), `replacement_count`는 저장 요청 과목 수다. 빈 입력은 기존처럼 학기 조회 없이 종료하므로 학기와 이전 건수는 `unknown`이다. 이전 현재 학기가 없거나 구형 삭제의 대상 학기를 알 수 없으면 해당 ID는 `unknown`이다. 구형 삭제는 기존 1/0 반환과 직접 삭제 정책을 유지하되 완료 기록을 위해 서비스 트랜잭션을 사용한다.
 
 사용 중 과목의 교체·신형 삭제 거절은 같은 이벤트 이름에 `result=rejected reason_code=COURSE_IN_USE`를 넣어 동기 INFO로 기록한다. 거절 이벤트는 커밋에 의존하지 않아 예외로 롤백되어도 남으며 완료 이벤트는 발행하지 않는다. 다른 실패는 기존 HTTP·예외 로그로 추적한다. 이 로그는 DB와 원자적인 영구 보존을 보장하지 않는다.
+
 ## 관리자 그룹 편집 감사 로그
 
 `POST /api/admin/edit-user`는 관리자 권한 검사 이후 확보한 감사 문맥을 사용한다. 실제 그룹 배정·이동·해제가 발생하면 `group_member_changed`를 커밋 이후 INFO로 기록한다. `request_id`, `actor_id`(없으면 `unknown`), `role`, `academic_term_id`, `target_user_id`, `previous_group_id`, `new_group_id`, `result=success`를 포함한다. 그룹 ID는 태그가 아닌 내부 ID이고, 미배정은 `none`이다. 동일 그룹 재선택과 개인정보만 수정한 요청에는 멤버 변경 이벤트가 없다.

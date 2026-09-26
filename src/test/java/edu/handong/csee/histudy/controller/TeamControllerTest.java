@@ -9,6 +9,9 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import edu.handong.csee.histudy.observability.audit.*;
+import edu.handong.csee.histudy.domain.Role;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.handong.csee.histudy.controller.form.ReportForm;
 import edu.handong.csee.histudy.dto.CourseDto;
@@ -40,7 +43,11 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 @WebMvcTest(TeamController.class)
 class TeamControllerTest {
 
+  private final AuditContext context = new AuditContext("report-request", 1L, Role.MEMBER);
+
   private MockMvc mockMvc;
+
+  @MockitoBean private AuditContextResolver auditContextResolver;
 
   @Autowired private ObjectMapper objectMapper;
 
@@ -60,6 +67,7 @@ class TeamControllerTest {
 
   @BeforeEach
   void setUp() throws Exception {
+    when(auditContextResolver.resolve(anyString(), eq(Role.MEMBER))).thenReturn(context);
     when(authenticationInterceptor.preHandle(any(), any(), any())).thenReturn(true);
 
     mockMvc =
@@ -68,7 +76,7 @@ class TeamControllerTest {
                     reportService,
                     courseService,
                     teamService,
-                    imageService))
+                    imageService, auditContextResolver))
             .setControllerAdvice(new ExceptionController(discordService))
             .addInterceptors(authenticationInterceptor)
             .build();
@@ -90,7 +98,7 @@ class TeamControllerTest {
             .build();
 
     ReportDto.ReportInfo reportInfo = mock(ReportDto.ReportInfo.class);
-    when(reportService.createReport(any(ReportCommand.class), anyString())).thenReturn(reportInfo);
+    when(reportService.createReport(any(ReportCommand.class), anyString(), eq(context))).thenReturn(reportInfo);
 
     // When
     mockMvc
@@ -104,7 +112,7 @@ class TeamControllerTest {
 
     // Then
     ArgumentCaptor<ReportCommand> commandCaptor = ArgumentCaptor.forClass(ReportCommand.class);
-    verify(reportService).createReport(commandCaptor.capture(), eq("member@test.com"));
+    verify(reportService).createReport(commandCaptor.capture(), eq("member@test.com"), eq(context));
     ReportCommand command = commandCaptor.getValue();
     assertThat(command.title()).isEqualTo("1주차");
     assertThat(command.content()).isEqualTo("Study content");
@@ -183,7 +191,7 @@ class TeamControllerTest {
             .images(List.of("/path/to/updated_image.jpg"))
             .build();
 
-    when(reportService.updateReport(anyLong(), any(ReportCommand.class), anyString()))
+    when(reportService.updateReport(anyLong(), any(ReportCommand.class), anyString(), eq(context)))
         .thenReturn(true);
 
     // When
@@ -198,7 +206,7 @@ class TeamControllerTest {
     // Then
     ArgumentCaptor<ReportCommand> commandCaptor = ArgumentCaptor.forClass(ReportCommand.class);
     verify(reportService)
-        .updateReport(eq(1L), commandCaptor.capture(), eq("member@test.com"));
+        .updateReport(eq(1L), commandCaptor.capture(), eq("member@test.com"), eq(context));
     ReportCommand command = commandCaptor.getValue();
     assertThat(command.title()).isEqualTo("수정된 제목");
     assertThat(command.content()).isEqualTo("Updated content");
@@ -213,7 +221,7 @@ class TeamControllerTest {
     Claims claims = memberClaims("member@test.com");
 
     ReportForm form = ReportForm.builder().build();
-    when(reportService.updateReport(anyLong(), any(ReportCommand.class), anyString()))
+    when(reportService.updateReport(anyLong(), any(ReportCommand.class), anyString(), eq(context)))
         .thenReturn(false);
 
     mockMvc
@@ -229,20 +237,20 @@ class TeamControllerTest {
   void 그룹원이_보고서삭제시_성공() throws Exception {
     Claims claims = memberClaims("member@test.com");
 
-    when(reportService.deleteReport(anyLong(), anyString())).thenReturn(true);
+    when(reportService.deleteReport(anyLong(), anyString(), eq(context))).thenReturn(true);
 
     mockMvc
         .perform(delete("/api/team/reports/1").requestAttr("claims", claims))
         .andExpect(status().isOk());
 
-    verify(reportService).deleteReport(1L, "member@test.com");
+    verify(reportService).deleteReport(1L, "member@test.com", context);
   }
 
   @Test
   void 그룹원이_없는보고서삭제시_실패() throws Exception {
     Claims claims = memberClaims("member@test.com");
 
-    when(reportService.deleteReport(anyLong(), anyString())).thenReturn(false);
+    when(reportService.deleteReport(anyLong(), anyString(), eq(context))).thenReturn(false);
 
     mockMvc
         .perform(delete("/api/team/reports/1").requestAttr("claims", claims))
@@ -341,5 +349,20 @@ class TeamControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isForbidden());
+    verifyNoInteractions(auditContextResolver, reportService);
+  }
+
+  @Test
+  void 권한없는사용자는_보고서를_수정하거나_삭제할수없다() throws Exception {
+    // given
+    Claims claims = userClaims("user@test.com");
+    // when
+    mockMvc.perform(patch("/api/team/reports/1").requestAttr("claims", claims)
+        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+        .andExpect(status().isForbidden());
+    mockMvc.perform(delete("/api/team/reports/1").requestAttr("claims", claims))
+        .andExpect(status().isForbidden());
+    // then
+    verifyNoInteractions(auditContextResolver, reportService);
   }
 }

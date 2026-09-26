@@ -2,6 +2,7 @@ package edu.handong.csee.histudy.controller;
 
 import edu.handong.csee.histudy.controller.form.ReportForm;
 import edu.handong.csee.histudy.domain.Role;
+import edu.handong.csee.histudy.observability.audit.AuditContextResolver;
 import edu.handong.csee.histudy.dto.CourseDto;
 import edu.handong.csee.histudy.dto.ReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
@@ -29,12 +30,14 @@ public class TeamController {
   private final CourseService courseService;
   private final TeamService teamService;
   private final ImageService imageService;
+  private final AuditContextResolver auditContextResolver;
 
   @PostMapping("/reports")
   public ReportDto.ReportInfo createReport(
       @RequestBody ReportForm form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.MEMBER)) {
-      return reportService.createReport(toReportCommand(form), claims.getSubject());
+      return reportService.createReport(toReportCommand(form), claims.getSubject(),
+          auditContextResolver.resolve(claims.getSubject(), Role.MEMBER));
     }
     throw new ForbiddenException();
   }
@@ -65,7 +68,8 @@ public class TeamController {
   public ResponseEntity<String> updateReport(
       @PathVariable Long reportId, @RequestBody ReportForm form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.MEMBER)) {
-      return (reportService.updateReport(reportId, toReportCommand(form), claims.getSubject()))
+      return (reportService.updateReport(reportId, toReportCommand(form), claims.getSubject(),
+          auditContextResolver.resolve(claims.getSubject(), Role.MEMBER)))
           ? ResponseEntity.ok().build()
           : ResponseEntity.notFound().build();
     }
@@ -76,7 +80,8 @@ public class TeamController {
   public ResponseEntity<String> deleteReport(
       @PathVariable Long reportId, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.MEMBER)) {
-      return (reportService.deleteReport(reportId, claims.getSubject()))
+      return (reportService.deleteReport(reportId, claims.getSubject(),
+          auditContextResolver.resolve(claims.getSubject(), Role.MEMBER)))
           ? ResponseEntity.ok().build()
           : ResponseEntity.notFound().build();
     }
