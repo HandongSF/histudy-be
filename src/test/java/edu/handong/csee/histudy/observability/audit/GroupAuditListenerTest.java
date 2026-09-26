@@ -62,7 +62,7 @@ class GroupAuditListenerTest {
       entityManager.persist(term);
       termId = term.getAcademicTermId();
       User user = User.builder().email(UUID.randomUUID() + "@private.example")
-          .name("private-name").sid("private-sid").role(Role.USER).build();
+          .name("private-name").sid("private-" + UUID.randomUUID()).role(Role.USER).build();
       entityManager.persist(user);
       userId = user.getUserId();
       StudyApplicant applicant = StudyApplicant.of(term, user, List.of(), List.of());
