@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -22,6 +23,9 @@ import edu.handong.csee.histudy.service.JwtService;
 import edu.handong.csee.histudy.service.UserService;
 import edu.handong.csee.histudy.service.command.LegacyStudyApplicationCommand;
 import io.jsonwebtoken.Claims;
+import edu.handong.csee.histudy.domain.Role;
+import edu.handong.csee.histudy.observability.audit.AuditContext;
+import edu.handong.csee.histudy.observability.audit.AuditContextResolver;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +39,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @WebMvcTest(ApplyFormController.class)
 class ApplyFormControllerTest {
+  private final AuditContext context = new AuditContext("request-app", 42L, Role.USER);
+
 
   private MockMvc mockMvc;
 
@@ -44,6 +50,8 @@ class ApplyFormControllerTest {
 
   @MockitoBean private UserService userService;
 
+  @MockitoBean private AuditContextResolver auditContextResolver;
+
   @MockitoBean private JwtService jwtService;
 
   @MockitoBean private DiscordService discordService;
@@ -52,8 +60,10 @@ class ApplyFormControllerTest {
   void setUp() throws Exception {
     when(authenticationInterceptor.preHandle(any(), any(), any())).thenReturn(true);
 
+    when(auditContextResolver.resolve("user@test.com", Role.USER)).thenReturn(context);
+
     mockMvc =
-        MockMvcBuilders.standaloneSetup(new ApplyFormController(userService))
+        MockMvcBuilders.standaloneSetup(new ApplyFormController(userService, auditContextResolver))
             .setControllerAdvice(new ExceptionController(discordService))
             .addInterceptors(authenticationInterceptor)
             .build();
@@ -68,7 +78,7 @@ class ApplyFormControllerTest {
         ApplyForm.builder().friendIds(List.of("22500101")).courseIds(List.of(1L)).build();
 
     ApplyFormDto result = mock(ApplyFormDto.class);
-    when(userService.apply(any(LegacyStudyApplicationCommand.class), anyString()))
+    when(userService.apply(any(LegacyStudyApplicationCommand.class), anyString(), eq(context)))
         .thenReturn(result);
 
     // When
@@ -84,7 +94,7 @@ class ApplyFormControllerTest {
     // Then
     ArgumentCaptor<LegacyStudyApplicationCommand> commandCaptor =
         ArgumentCaptor.forClass(LegacyStudyApplicationCommand.class);
-    verify(userService).apply(commandCaptor.capture(), eq("user@test.com"));
+    verify(userService).apply(commandCaptor.capture(), eq("user@test.com"), eq(context));
     assertThat(commandCaptor.getValue())
         .isEqualTo(new LegacyStudyApplicationCommand(List.of("22500101"), List.of(1L)));
   }
@@ -100,7 +110,7 @@ class ApplyFormControllerTest {
     when(applicant.getPartnerRequests()).thenReturn(List.of());
     when(applicant.getPreferredCourses()).thenReturn(List.of());
 
-    when(userService.apply(anyList(), anyList(), anyString())).thenReturn(applicant);
+    when(userService.apply(anyList(), anyList(), anyString(), eq(context))).thenReturn(applicant);
 
     mockMvc
         .perform(
@@ -125,6 +135,7 @@ class ApplyFormControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isForbidden());
+    verifyNoInteractions(userService, auditContextResolver);
   }
 
   @Test
@@ -140,5 +151,6 @@ class ApplyFormControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isForbidden());
+    verifyNoInteractions(userService, auditContextResolver);
   }
 }
