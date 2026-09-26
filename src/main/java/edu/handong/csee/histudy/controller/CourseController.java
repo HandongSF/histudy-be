@@ -1,6 +1,7 @@
 package edu.handong.csee.histudy.controller;
 
 import edu.handong.csee.histudy.domain.Role;
+import edu.handong.csee.histudy.observability.audit.AuditContextResolver;
 import edu.handong.csee.histudy.dto.CourseDto;
 import edu.handong.csee.histudy.dto.CourseIdDto;
 import edu.handong.csee.histudy.exception.ForbiddenException;
@@ -27,6 +28,7 @@ public class CourseController {
       Set.of("text/csv", "application/csv", "application/vnd.ms-excel", "application/octet-stream");
 
   private final CourseService courseService;
+  private final AuditContextResolver auditContextResolver;
 
   @PostMapping(consumes = {"multipart/form-data"})
   public ResponseEntity<Void> importCourses(
@@ -37,7 +39,7 @@ public class CourseController {
       }
       validateCsvFile(file);
       List<CourseCSV> courseData = CSVResolver.of(file).resolve();
-      courseService.replaceCourses(courseData);
+      courseService.replaceCourses(courseData, auditContextResolver.resolve(claims.getSubject(), Role.ADMIN));
       return ResponseEntity.status(HttpStatus.CREATED).build();
     }
     throw new ForbiddenException();
@@ -60,7 +62,7 @@ public class CourseController {
   @PostMapping("/delete")
   public int deleteCourse(@RequestBody CourseIdDto dto, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      return courseService.deleteCourse(dto);
+      return courseService.deleteCourse(dto, auditContextResolver.resolve(claims.getSubject(), Role.ADMIN));
     }
     throw new ForbiddenException();
   }
@@ -69,7 +71,7 @@ public class CourseController {
   public ResponseEntity<Void> deleteCurrentCourse(
       @PathVariable Long courseId, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      courseService.deleteCurrentCourse(courseId);
+      courseService.deleteCurrentCourse(courseId, auditContextResolver.resolve(claims.getSubject(), Role.ADMIN));
       return ResponseEntity.noContent().build();
     }
     throw new ForbiddenException();

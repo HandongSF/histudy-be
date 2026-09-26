@@ -226,4 +226,26 @@ class CourseRepositoryImplTest {
     // Then
     assertThat(result).isFalse();
   }
+  @Test
+  void 여러학기가_현재학기여도_지정한_학기의_과목만_집계한다() {
+    // Given
+    AcademicTerm other = entityManager.persist(AcademicTerm.builder()
+        .academicYear(2027).semester(TermType.SPRING).isCurrent(true).build());
+    AcademicTerm empty = entityManager.persist(AcademicTerm.builder()
+        .academicYear(2027).semester(TermType.FALL).isCurrent(false).build());
+    entityManager.persist(Course.builder().name("두번째").code("SECOND")
+        .academicTerm(currentTerm).build());
+    entityManager.persist(Course.builder().name("다른학기").code("OTHER")
+        .academicTerm(other).build());
+    entityManager.flush();
+    entityManager.clear();
+
+    // When
+    long count = courseRepository.countByAcademicTerm(currentTerm);
+
+    // Then
+    assertThat(count).isEqualTo(2L);
+    assertThat(courseRepository.countByAcademicTerm(other)).isEqualTo(1L);
+    assertThat(courseRepository.countByAcademicTerm(empty)).isZero();
+  }
 }

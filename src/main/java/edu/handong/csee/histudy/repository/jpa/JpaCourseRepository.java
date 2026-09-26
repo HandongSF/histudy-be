@@ -18,6 +18,8 @@ public interface JpaCourseRepository extends JpaRepository<Course, Long> {
 
   List<Course> findAllByAcademicTermIsCurrentTrue();
 
+  long countByAcademicTerm(AcademicTerm academicTerm);
+
   @Query(
       "select exists (select 1 from PreferredCourse pc where pc.course.courseId = :courseId)")
   boolean existsPreferredCourseReferences(@Param("courseId") Long courseId);

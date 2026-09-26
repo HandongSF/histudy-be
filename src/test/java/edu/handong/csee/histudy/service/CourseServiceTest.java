@@ -24,8 +24,12 @@ import edu.handong.csee.histudy.util.CourseCSV;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import edu.handong.csee.histudy.observability.audit.*;
+import java.util.ArrayList;
 
 class CourseServiceTest {
+  private final AuditContext context = new AuditContext("request", 42L, Role.ADMIN);
+  private final java.util.List<Object> events = new ArrayList<>();
 
   private final AcademicTerm currentTerm =
       AcademicTerm.builder().academicYear(2025).semester(TermType.SPRING).isCurrent(true).build();
@@ -72,7 +76,7 @@ class CourseServiceTest {
     studyGroupRepository = new FakeStudyGroupRepository();
     courseService =
         new CourseService(
-            courseRepository, userRepository, academicTermRepository, studyGroupRepository);
+            events::add, courseRepository, userRepository, academicTermRepository, studyGroupRepository);
   }
 
   @Test
@@ -131,7 +135,7 @@ class CourseServiceTest {
                 .build()));
 
     // When
-    courseService.replaceCourses(replacementCsvData);
+    courseService.replaceCourses(replacementCsvData, context);
 
     // Then
     assertThat(courseRepository.findAll()).hasSize(2);
@@ -150,9 +154,10 @@ class CourseServiceTest {
     courseRepository.markReferenced(savedCourse.getCourseId());
 
     // When Then
-    assertThatThrownBy(() -> courseService.replaceCourses(replacementCsvData))
+    assertThatThrownBy(() -> courseService.replaceCourses(replacementCsvData, context))
         .isInstanceOf(CourseInUseException.class)
         .hasMessage("사용 중인 강의는 삭제할 수 없습니다.");
+    assertThat(events).singleElement().isInstanceOf(CourseChangeRejectedEvent.class);
     assertThat(courseRepository.findAll()).containsExactly(savedCourse);
   }
 
@@ -182,7 +187,7 @@ class CourseServiceTest {
     courseRepository.markReferenced(referencedOtherTermCourse.getCourseId());
 
     // When
-    courseService.replaceCourses(replacementCsvData);
+    courseService.replaceCourses(replacementCsvData, context);
 
     // Then
     assertThat(courseRepository.findAll()).doesNotContain(savedCurrentCourse);
@@ -197,7 +202,7 @@ class CourseServiceTest {
   void 현재_학기_없이_과목_CSV로_교체하면_예외가_발생한다() {
     // Given
     // When Then
-    assertThatThrownBy(() -> courseService.replaceCourses(replacementCsvData))
+    assertThatThrownBy(() -> courseService.replaceCourses(replacementCsvData, context))
         .isInstanceOf(NoCurrentTermFoundException.class);
   }
 
@@ -238,9 +243,10 @@ class CourseServiceTest {
     Course savedCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);
 
     // When
-    int result = courseService.deleteCourse(new CourseIdDto(savedCourse.getCourseId()));
+    int result = courseService.deleteCourse(new CourseIdDto(savedCourse.getCourseId()), context);
 
     // Then
+    assertThat(events).containsExactly(new CourseDeletedEvent(context, currentTerm.getAcademicTermId(), savedCourse.getCourseId(), true, true));
     assertThat(result).isEqualTo(1);
     assertThat(courseRepository.findAll()).isEmpty();
   }
@@ -251,7 +257,7 @@ class CourseServiceTest {
     Course savedCourse = courseRepository.saveAll(List.of(currentCourse)).get(0);
 
     // When
-    courseService.deleteCurrentCourse(savedCourse.getCourseId());
+    courseService.deleteCurrentCourse(savedCourse.getCourseId(), context);
 
     // Then
     assertThat(courseRepository.findAll()).isEmpty();
@@ -261,7 +267,7 @@ class CourseServiceTest {
   void 없는_과목을_삭제하면_예외가_발생한다() {
     // Given
     // When Then
-    assertThatThrownBy(() -> courseService.deleteCurrentCourse(999L))
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(999L, context))
         .isInstanceOf(CourseNotFoundException.class);
   }
 
@@ -271,7 +277,7 @@ class CourseServiceTest {
     Course savedCourse = courseRepository.saveAll(List.of(previousCourse)).get(0);
 
     // When Then
-    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId()))
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId(), context))
         .isInstanceOf(CourseNotFoundException.class);
   }
 
@@ -283,8 +289,9 @@ class CourseServiceTest {
     Course savedCourse = courseRepository.saveAll(List.of(courseWithoutTerm)).get(0);
 
     // When Then
-    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId()))
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId(), context))
         .isInstanceOf(CourseNotFoundException.class);
+    assertThat(events).isEmpty();
     assertThat(courseRepository.findAll()).containsExactly(savedCourse);
   }
 
@@ -295,9 +302,66 @@ class CourseServiceTest {
     courseRepository.markReferenced(savedCourse.getCourseId());
 
     // When Then
-    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId()))
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(savedCourse.getCourseId(), context))
         .isInstanceOf(CourseInUseException.class)
         .hasMessage("사용 중인 강의는 삭제할 수 없습니다.");
+    assertThat(events).singleElement().isInstanceOf(CourseChangeRejectedEvent.class);
     assertThat(courseRepository.findAll()).containsExactly(savedCourse);
+  }
+  @Test
+  void 감사문맥없이_과목을_삭제하면_변경전에_실패한다() {
+    // given
+    Course saved = courseRepository.saveAll(List.of(currentCourse)).get(0);
+    // when then
+    assertThatThrownBy(() -> courseService.deleteCourse(new CourseIdDto(saved.getCourseId()), null))
+        .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> courseService.deleteCurrentCourse(saved.getCourseId(), null))
+        .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> courseService.replaceCourses(replacementCsvData, null))
+        .isInstanceOf(NullPointerException.class);
+    assertThat(courseRepository.findAll()).containsExactly(saved);
+    assertThat(events).isEmpty();
+  }
+  @Test
+  void 구형삭제는_과거학기의_과목도_기존정책대로_삭제한다() {
+    // given
+    academicTermRepository.save(previousTerm);
+    Course saved = courseRepository.saveAll(List.of(previousCourse)).get(0);
+    courseRepository.markReferenced(saved.getCourseId());
+
+    // when
+    int result = courseService.deleteCourse(new CourseIdDto(saved.getCourseId()), context);
+
+    // then
+    assertThat(result).isEqualTo(1);
+    assertThat(courseRepository.findAll()).isEmpty();
+    assertThat(events).containsExactly(new CourseDeletedEvent(
+        context, previousTerm.getAcademicTermId(), saved.getCourseId(), true, true));
+  }
+
+  @Test
+  void 구형삭제의_대상이_없으면_영과_변경없음_이벤트를_반환한다() {
+    // given
+    Long missingId = 999L;
+
+    // when
+    int result = courseService.deleteCourse(new CourseIdDto(missingId), context);
+
+    // then
+    assertThat(result).isZero();
+    assertThat(events).containsExactly(new CourseDeletedEvent(context, null, missingId, false, true));
+  }
+
+  @Test
+  void 구형삭제는_학기가_없는_과목의_성공도_기록한다() {
+    // given
+    Course saved = courseRepository.saveAll(List.of(Course.builder().name("과목").build())).get(0);
+
+    // when
+    int result = courseService.deleteCourse(new CourseIdDto(saved.getCourseId()), context);
+
+    // then
+    assertThat(result).isEqualTo(1);
+    assertThat(events).containsExactly(new CourseDeletedEvent(context, null, saved.getCourseId(), true, true));
   }
 }

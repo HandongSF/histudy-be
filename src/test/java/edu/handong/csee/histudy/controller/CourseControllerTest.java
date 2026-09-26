@@ -31,6 +31,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @WebMvcTest(CourseController.class)
 class CourseControllerTest {
+  private final edu.handong.csee.histudy.observability.audit.AuditContext auditContext =
+      new edu.handong.csee.histudy.observability.audit.AuditContext("request-admin", 42L, edu.handong.csee.histudy.domain.Role.ADMIN);
+  @MockitoBean private edu.handong.csee.histudy.observability.audit.AuditContextResolver auditContextResolver;
 
   private MockMvc mockMvc;
 
@@ -47,9 +50,10 @@ class CourseControllerTest {
   @BeforeEach
   void setUp() throws Exception {
     when(authenticationInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    when(auditContextResolver.resolve(any(), any())).thenReturn(auditContext);
 
     mockMvc =
-        MockMvcBuilders.standaloneSetup(new CourseController(courseService))
+        MockMvcBuilders.standaloneSetup(new CourseController(courseService, auditContextResolver))
             .setControllerAdvice(new ExceptionController(discordService))
             .addInterceptors(authenticationInterceptor)
             .build();
@@ -67,13 +71,13 @@ class CourseControllerTest {
             "text/csv",
             "title,code,prof\r\n자료구조,CSE201,김교수\r\n".getBytes());
 
-    doNothing().when(courseService).replaceCourses(any());
+    doNothing().when(courseService).replaceCourses(any(), any());
 
     // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isCreated());
-    verify(courseService).replaceCourses(any());
+    verify(courseService).replaceCourses(any(), any());
   }
 
   @Test
@@ -83,13 +87,13 @@ class CourseControllerTest {
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "courses.csv", "text/csv ; charset=utf-8", "title,code,prof\r\n자료구조,CSE201,김교수\r\n".getBytes());
-    doNothing().when(courseService).replaceCourses(any());
+    doNothing().when(courseService).replaceCourses(any(), any());
 
     // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isCreated());
-    verify(courseService).replaceCourses(any());
+    verify(courseService).replaceCourses(any(), any());
   }
 
   @Test
@@ -99,13 +103,13 @@ class CourseControllerTest {
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "courses.csv", "application/octet-stream", "title,code,prof\r\n자료구조,CSE201,김교수\r\n".getBytes());
-    doNothing().when(courseService).replaceCourses(any());
+    doNothing().when(courseService).replaceCourses(any(), any());
 
     // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isCreated());
-    verify(courseService).replaceCourses(any());
+    verify(courseService).replaceCourses(any(), any());
   }
 
   @Test
@@ -115,13 +119,13 @@ class CourseControllerTest {
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "courses.csv", "text/csv", "prof,title,code\r\n김교수,자료구조,CSE201\r\n".getBytes());
-    doNothing().when(courseService).replaceCourses(any());
+    doNothing().when(courseService).replaceCourses(any(), any());
 
     // When Then
     mockMvc
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isCreated());
-    verify(courseService).replaceCourses(any());
+    verify(courseService).replaceCourses(any(), any());
   }
 
   @Test
@@ -137,7 +141,7 @@ class CourseControllerTest {
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("CSV 파일만 업로드할 수 있습니다."));
-    verify(courseService, never()).replaceCourses(any());
+    verify(courseService, never()).replaceCourses(any(), any());
   }
 
   @Test
@@ -154,7 +158,7 @@ class CourseControllerTest {
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("CSV 헤더는 title,code,prof 형식이어야 합니다."));
-    verify(courseService, never()).replaceCourses(any());
+    verify(courseService, never()).replaceCourses(any(), any());
   }
 
   @Test
@@ -170,7 +174,7 @@ class CourseControllerTest {
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("CSV 파일에 수업 데이터가 없습니다."));
-    verify(courseService, never()).replaceCourses(any());
+    verify(courseService, never()).replaceCourses(any(), any());
   }
 
   @Test
@@ -190,7 +194,7 @@ class CourseControllerTest {
         .perform(multipart("/api/courses").file(file).requestAttr("claims", claims))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("CSV 데이터는 title,code,prof 세 열만 허용합니다."));
-    verify(courseService, never()).replaceCourses(any());
+    verify(courseService, never()).replaceCourses(any(), any());
   }
 
   @Test
@@ -212,7 +216,7 @@ class CourseControllerTest {
     Claims claims = adminClaims("admin@test.com");
 
     CourseIdDto dto = mock(CourseIdDto.class);
-    when(courseService.deleteCourse(any(CourseIdDto.class))).thenReturn(1);
+    when(courseService.deleteCourse(any(CourseIdDto.class), any())).thenReturn(1);
 
     mockMvc
         .perform(
@@ -234,7 +238,7 @@ class CourseControllerTest {
         .perform(delete("/api/courses/{courseId}", 1L).requestAttr("claims", claims))
         .andExpect(status().isNoContent())
         .andExpect(content().string(""));
-    verify(courseService).deleteCurrentCourse(1L);
+    verify(courseService).deleteCurrentCourse(1L, auditContext);
   }
 
   @Test
@@ -246,14 +250,15 @@ class CourseControllerTest {
     mockMvc
         .perform(delete("/api/courses/{courseId}", 1L).requestAttr("claims", claims))
         .andExpect(status().isForbidden());
-    verify(courseService, never()).deleteCurrentCourse(anyLong());
+    verify(courseService, never()).deleteCurrentCourse(anyLong(), any());
+    verifyNoInteractions(auditContextResolver);
   }
 
   @Test
   void 없는_강의삭제시_찾을수없음으로_응답한다() throws Exception {
     // Given
     Claims claims = adminClaims("admin@test.com");
-    doThrow(new CourseNotFoundException()).when(courseService).deleteCurrentCourse(1L);
+    doThrow(new CourseNotFoundException()).when(courseService).deleteCurrentCourse(1L, auditContext);
 
     // When Then
     mockMvc
@@ -266,7 +271,7 @@ class CourseControllerTest {
   void 사용중인_강의삭제시_충돌로_응답한다() throws Exception {
     // Given
     Claims claims = adminClaims("admin@test.com");
-    doThrow(new CourseInUseException()).when(courseService).deleteCurrentCourse(1L);
+    doThrow(new CourseInUseException()).when(courseService).deleteCurrentCourse(1L, auditContext);
 
     // When Then
     mockMvc

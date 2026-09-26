@@ -130,7 +130,7 @@ public class AdminController {
   public ResponseEntity<Void> createAcademicTerm(
       @RequestBody AcademicTermForm form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      academicTermService.createAcademicTerm(form.getYear(), form.getSemester());
+      academicTermService.createAcademicTerm(form.getYear(), form.getSemester(), auditContextResolver.resolve(claims.getSubject(), Role.ADMIN));
       return ResponseEntity.status(HttpStatus.CREATED).build();
     }
     throw new ForbiddenException();
@@ -161,7 +161,7 @@ public class AdminController {
   public ResponseEntity<Void> setCurrentTerm(
       @PathVariable Long id, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      academicTermService.setCurrentTerm(id);
+      academicTermService.setCurrentTerm(id, auditContextResolver.resolve(claims.getSubject(), Role.ADMIN));
       return ResponseEntity.ok().build();
     }
     throw new ForbiddenException();
