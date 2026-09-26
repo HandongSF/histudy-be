@@ -4,13 +4,18 @@ import edu.handong.csee.histudy.domain.*;
 import edu.handong.csee.histudy.dto.ApplyFormDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.exception.*;
+import edu.handong.csee.histudy.observability.audit.AuditContext;
+import edu.handong.csee.histudy.observability.audit.EmptyGroupsCleanedEvent;
+import edu.handong.csee.histudy.observability.audit.GroupMemberChangedEvent;
 import edu.handong.csee.histudy.repository.*;
 import edu.handong.csee.histudy.repository.StudyApplicantRepository;
 import edu.handong.csee.histudy.service.command.LegacyStudyApplicationCommand;
 import edu.handong.csee.histudy.service.command.SignUpCommand;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +31,7 @@ public class UserService {
   private final AcademicTermRepository academicTermRepository;
   private final StudyApplicantRepository studyApplicantRepository;
   private final StudyReportRepository studyReportRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   public List<User> search(Optional<String> keyword) {
     if (keyword.isEmpty() || keyword.get().isBlank()) {
@@ -201,13 +207,16 @@ public class UserService {
     removeFormHistoryIfExists(user, currentTerm);
   }
 
-  public void editUser(UserDto.UserEdit form) {
+  public void editUser(UserDto.UserEdit form, AuditContext context) {
+    Objects.requireNonNull(context, "audit context must not be null");
     User user = userRepository.findById(form.getId()).orElseThrow(UserNotFoundException::new);
     AcademicTerm currentTerm =
         academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
     Optional<StudyApplicant> applicantOr =
         studyApplicantRepository.findByUserAndTerm(user, currentTerm);
 
+    Long previousGroupId = applicantOr.map(StudyApplicant::getStudyGroup)
+        .map(StudyGroup::getStudyGroupId).orElse(null);
     user.edit(form.getSid(), form.getName());
 
     Optional.ofNullable(form.getTeam())
@@ -225,13 +234,27 @@ public class UserService {
             },
             () -> applicantOr.ifPresent(StudyApplicant::leaveStudyGroup));
 
-    studyGroupRepository
-        .findAllEmptyByAcademicTerm(currentTerm)
-        .stream()
-        .filter(
-            group ->
-                studyReportRepository.findAllByStudyGroupOrderByCreatedDateDesc(group).isEmpty())
-        .forEach(group -> studyGroupRepository.deleteById(group.getStudyGroupId()));
+    Long newGroupId = applicantOr.map(StudyApplicant::getStudyGroup)
+        .map(StudyGroup::getStudyGroupId).orElse(null);
+    boolean groupChanged = !Objects.equals(previousGroupId, newGroupId);
+    int deletedCount = 0;
+    int preservedCount = 0;
+    for (StudyGroup group : studyGroupRepository.findAllEmptyByAcademicTerm(currentTerm)) {
+      if (studyReportRepository.findAllByStudyGroupOrderByCreatedDateDesc(group).isEmpty()) {
+        studyGroupRepository.deleteById(group.getStudyGroupId());
+        deletedCount++;
+      } else {
+        preservedCount++;
+      }
+    }
+    if (groupChanged) {
+      eventPublisher.publishEvent(new GroupMemberChangedEvent(context,
+          currentTerm.getAcademicTermId(), user.getUserId(), previousGroupId, newGroupId));
+    }
+    if (deletedCount > 0 || (groupChanged && preservedCount > 0)) {
+      eventPublisher.publishEvent(new EmptyGroupsCleanedEvent(context,
+          currentTerm.getAcademicTermId(), deletedCount, preservedCount));
+    }
   }
 
   public List<UserDto.UserInfo> getAppliedWithoutGroup() {

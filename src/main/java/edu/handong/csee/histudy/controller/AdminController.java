@@ -104,7 +104,7 @@ public class AdminController {
   @PostMapping("/edit-user")
   public void editUser(@RequestBody UserDto.UserEdit form, @RequestAttribute Claims claims) {
     if (Role.isAuthorized(claims, Role.ADMIN)) {
-      userService.editUser(form);
+      userService.editUser(form, auditContextResolver.resolve(claims.getSubject(), Role.ADMIN));
       return;
     }
     throw new ForbiddenException();

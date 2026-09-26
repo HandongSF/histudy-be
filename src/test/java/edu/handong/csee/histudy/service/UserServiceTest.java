@@ -24,6 +24,7 @@ import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepo
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyGroupRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyReportRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeUserRepository;
+import edu.handong.csee.histudy.observability.audit.AuditContext;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -146,7 +147,7 @@ class UserServiceTest {
             studyGroupRepository,
             academicTermRepository,
             studyApplicantRepository,
-            studyReportRepository);
+            studyReportRepository, event -> {});
   }
 
   @Test
@@ -449,7 +450,7 @@ class UserServiceTest {
     UserDto.UserEdit form = UserDto.UserEdit.builder().id(user.getUserId()).team(null).build();
 
     // When
-    userService.editUser(form);
+    userService.editUser(form, new AuditContext("request-edit", 42L, Role.ADMIN));
 
     // Then
     assertThat(applicant.getStudyGroup()).isNull();
@@ -471,7 +472,7 @@ class UserServiceTest {
     UserDto.UserEdit form = UserDto.UserEdit.builder().id(user.getUserId()).team(null).build();
 
     // When
-    userService.editUser(form);
+    userService.editUser(form, new AuditContext("request-edit", 42L, Role.ADMIN));
 
     // Then
     assertThat(applicant.getStudyGroup()).isNull();
