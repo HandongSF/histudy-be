@@ -72,9 +72,9 @@ public class UserService {
 
                       applicant.changeStatusIfReceivedBy(partner, StudyPartnerRequest::accept);
                     }));
-    studyApplicantRepository.save(applicant);
-    publishSubmission(context, applicant, previous);
-    return new ApplyFormDto(applicant);
+    StudyApplicant saved = studyApplicantRepository.save(applicant);
+    publishSubmission(context, saved, previous);
+    return new ApplyFormDto(saved);
   }
 
   public StudyApplicant apply(List<Long> friendsIds, List<Long> courseIds, String email, AuditContext context) {

@@ -2,7 +2,11 @@ package edu.handong.csee.histudy.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import edu.handong.csee.histudy.repository.StudyApplicantRepository;
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
 import edu.handong.csee.histudy.domain.RequestStatus;
@@ -496,6 +500,38 @@ class UserServiceTest {
     assertThatThrownBy(() -> userService.deleteUserForm("private-sid", null))
         .isInstanceOf(NullPointerException.class);
     assertThat(auditEvents).isEmpty();
+  }
+
+  @Test
+  void V1저장소가_다른객체를_반환하면_저장된_ID로_감사이벤트를_발행한다() {
+    // given
+    academicTermRepository.save(currentTerm);
+    User user = userRepository.save(applicantUser);
+    Course course = courseRepository.saveAll(List.of(primaryCourse)).get(0);
+    StudyApplicant saved = studyApplicantRepository.save(
+        StudyApplicant.of(currentTerm, user, List.of(), List.of(course)));
+    StudyApplicantRepository repository = mock(StudyApplicantRepository.class);
+    when(repository.save(any(StudyApplicant.class))).thenAnswer(invocation -> {
+      StudyApplicant original = invocation.getArgument(0);
+      assertThat(original).isNotSameAs(saved);
+      assertThat(original.getStudyApplicantId()).isNull();
+      return saved;
+    });
+    UserService service = new UserService(userRepository, courseRepository, studyGroupRepository,
+        academicTermRepository, repository, studyReportRepository, auditEvents::add);
+
+    // when
+    ApplyFormDto response = service.apply(
+        new LegacyStudyApplicationCommand(List.of(), List.of(course.getCourseId())),
+        user.getEmail(), context);
+
+    // then
+    assertThat(response.getCourses()).hasSize(1);
+    assertThat(auditEvents).singleElement().satisfies(value -> {
+      StudyApplicationAuditEvent event = (StudyApplicationAuditEvent) value;
+      assertThat(event.applicationId()).isEqualTo(saved.getStudyApplicantId());
+      assertThat(event.preferredCourseCount()).isEqualTo(1);
+    });
   }
 
 }
