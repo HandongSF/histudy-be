@@ -95,3 +95,40 @@ actor_id=unknown으로 기존 매칭 동작을 유지하며 DB 조회 장애는 
 거절 로그는 요청한 `report_id`만 포함하고 타 그룹·학기·건수를 조회하거나 노출하지 않는다. 롤백에도 거절 시도 기록은 유지한다.
 성공은 외부 트랜잭션 롤백·flush 실패·트랜잭션 없는 발행에서는 기록되지 않는다. 이미지 파일 저장 자체는 이 이벤트의 범위가 아니다.
 이름·이메일·보고서 제목·본문·파일명·이미지 URL·참여자 목록은 이벤트와 로그에 포함하지 않는다.
+
+## 학기·과목 감사 이벤트
+
+학기 생성과 전환, 과목 교체와 삭제는 관리자 권한 검사 뒤 확보한 `AuditContext`를 전달한다. 완료 이벤트는 DB 커밋 이후 INFO로 한 번 기록하며 외부 트랜잭션 롤백·flush 실패·트랜잭션 없는 이벤트 발행에서는 출력하지 않는다. `request_id`, `actor_id`, `role`은 발행 시점 값이며 행위자 부재는 `unknown`이다. CSV 원문·파일명·과목명·교수명·사용자 개인정보·예외 원문은 포함하지 않는다.
+
+| 이벤트 | 추가 필드 | 결과 |
+| --- | --- | --- |
+| `academic_term_created` | `academic_term_id` | `success` |
+| `current_term_changed` | `previous_term_id`, `academic_term_id` | `success`, 이미 현재 학기면 `no_op` / `ALREADY_CURRENT` |
+| `courses_replaced` | `academic_term_id`, `previous_count`, `replacement_count` | `success`, 빈 입력이면 `no_op` / `EMPTY_INPUT` |
+| `course_deleted` | `academic_term_id`, `course_id`, `legacy` | `success`, 구형 경로의 대상 부재는 `no_op` / `COURSE_NOT_FOUND` |
+
+`previous_count`는 선택된 현재 학기에 한정한 DB count 쿼리로 얻는 교체 전 과목 수(long), `replacement_count`는 저장 요청 과목 수다. 빈 입력은 기존처럼 학기 조회 없이 종료하므로 학기와 이전 건수는 `unknown`이다. 이전 현재 학기가 없거나 구형 삭제의 대상 학기를 알 수 없으면 해당 ID는 `unknown`이다. 구형 삭제는 기존 1/0 반환과 직접 삭제 정책을 유지하되 완료 기록을 위해 서비스 트랜잭션을 사용한다.
+
+사용 중 과목의 교체·신형 삭제 거절은 같은 이벤트 이름에 `result=rejected reason_code=COURSE_IN_USE`를 넣어 동기 INFO로 기록한다. 거절 이벤트는 커밋에 의존하지 않아 예외로 롤백되어도 남으며 완료 이벤트는 발행하지 않는다. 다른 실패는 기존 HTTP·예외 로그로 추적한다. 이 로그는 DB와 원자적인 영구 보존을 보장하지 않는다.
+
+## 관리자 그룹 편집 감사 로그
+
+`POST /api/admin/edit-user`는 관리자 권한 검사 이후 확보한 감사 문맥을 사용한다. 실제 그룹 배정·이동·해제가 발생하면 `group_member_changed`를 커밋 이후 INFO로 기록한다. `request_id`, `actor_id`(없으면 `unknown`), `role`, `academic_term_id`, `target_user_id`, `previous_group_id`, `new_group_id`, `result=success`를 포함한다. 그룹 ID는 태그가 아닌 내부 ID이고, 미배정은 `none`이다. 동일 그룹 재선택과 개인정보만 수정한 요청에는 멤버 변경 이벤트가 없다.
+
+기존 학기 전체 빈 그룹 정리는 유지한다. 보고서 존재 확인에는 그룹별 존재 쿼리를 사용해 보고서 엔티티 전체 로딩을 피한다. 그룹별 쿼리는 유지되므로 다수 빈 그룹의 쿼리 횟수를 줄이는 최적화는 포함하지 않는다. 삭제가 있거나 그룹 변경 중 보존된 빈 그룹이 있으면 `empty_groups_cleaned`를 함께 기록한다. `deleted_group_count`는 이번 정리에서 삭제한 수, `preserved_group_count`는 보고서 때문에 보존한 빈 그룹 수이며 모두 해당 학기 전체 정리 대상 기준이다. 삭제 없이 개인정보만 수정하는 요청에서 보존 수만 반복 기록하지 않는다. 이 이벤트에는 공통 요청·행위자·학기 필드와 `result=success`를 포함한다.
+
+이벤트는 엔티티나 개인정보 대신 ID와 건수만 보관한다. 외부 트랜잭션 롤백과 커밋 실패 시 완료 로그가 없으며, 트랜잭션 없이 발행한 이벤트는 기록하지 않는다. 요청 본문, 이름, 학번, 이메일, 그룹 태그, 예외 원문은 포함하지 않는다. 로그의 영구 보존은 DB 변경과 원자적으로 보장되지 않는다.
+
+## 스터디 신청 감사 로그
+
+`study_application_submitted`와 `study_application_deleted`는 INFO로 커밋 이후 한 번
+기록합니다. v1·v2 신청 모두 신규는 `submission_type=new`, 재신청은 `resubmission`입니다.
+재신청 내부에서 기존 신청을 삭제하더라도 별도 삭제 이벤트를 발행하지 않습니다.
+관리자 삭제는 행위자와 대상 사용자를 구분하고, 신청이 없으면 `result=no_op`,
+`reason_code=NO_APPLICATION`로 기록합니다. 실패·롤백은 완료 이벤트를 출력하지 않습니다.
+
+공통 필드는 request_id, actor_id, role, academic_term_id, target_user_id, application_id,
+result입니다. 제출은 submission_type, previous_application_id, friend_request_count,
+preferred_course_count를 추가합니다. 삭제도 삭제 직전 두 건수를 기록합니다.
+존재하지 않는 ID는 unknown입니다. 친구·과목의 ID 목록, 학번·이메일·이름·신청 원문은
+담지 않습니다. 신청 거절의 기존 HTTP/예외 처리와 그룹 배정 규칙은 변경하지 않습니다.

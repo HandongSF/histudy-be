@@ -40,6 +40,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @WebMvcTest(AdminController.class)
 class AdminControllerTest {
+  private final edu.handong.csee.histudy.observability.audit.AuditContext auditContext =
+      new edu.handong.csee.histudy.observability.audit.AuditContext("request-admin", 42L, edu.handong.csee.histudy.domain.Role.ADMIN);
 
   private MockMvc mockMvc;
 
@@ -64,6 +66,7 @@ class AdminControllerTest {
   @BeforeEach
   void setUp() throws Exception {
     when(authenticationInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    when(auditContextResolver.resolve(any(), any())).thenReturn(auditContext);
 
     mockMvc =
         MockMvcBuilders.standaloneSetup(
@@ -161,11 +164,23 @@ class AdminControllerTest {
   void 관리자가_유저지원폼삭제시_성공() throws Exception {
     Claims claims = adminClaims("admin@test.com");
 
-    doNothing().when(userService).deleteUserForm(anyString());
+    AuditContext context = new AuditContext("request-delete", 42L, Role.ADMIN);
+    when(auditContextResolver.resolve("admin@test.com", Role.ADMIN)).thenReturn(context);
 
     mockMvc
         .perform(delete("/api/admin/form").requestAttr("claims", claims).param("sid", "22500101"))
         .andExpect(status().isOk());
+    verify(userService).deleteUserForm("22500101", context);
+  }
+
+  @Test
+  void 비관리자_신청삭제는_감사문맥조회_전에_거절한다() throws Exception {
+    // given
+    Claims claims = userClaims("user@test.com");
+    // when then
+    mockMvc.perform(delete("/api/admin/form").requestAttr("claims", claims).param("sid", "22500101"))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(userService, auditContextResolver);
   }
 
   @Test
@@ -173,7 +188,8 @@ class AdminControllerTest {
     Claims claims = adminClaims("admin@test.com");
 
     UserDto.UserEdit form = mock(UserDto.UserEdit.class);
-    doNothing().when(userService).editUser(any(UserDto.UserEdit.class));
+    AuditContext context = new AuditContext("request-edit", 42L, Role.ADMIN);
+    when(auditContextResolver.resolve("admin@test.com", Role.ADMIN)).thenReturn(context);
 
     mockMvc
         .perform(
@@ -182,6 +198,19 @@ class AdminControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isOk());
+    verify(userService).editUser(any(UserDto.UserEdit.class), eq(context));
+  }
+
+  @Test
+  void 비관리자가_유저정보수정시_문맥조회와_편집을_실행하지_않는다() throws Exception {
+    // given
+    Claims claims = userClaims("user@test.com");
+    // when
+    var result = mockMvc.perform(post("/api/admin/edit-user").requestAttr("claims", claims)
+        .contentType(MediaType.APPLICATION_JSON).content("{\"id\":1}"));
+    // then
+    result.andExpect(status().isForbidden());
+    verifyNoInteractions(userService, auditContextResolver);
   }
 
   @Test
@@ -212,7 +241,7 @@ class AdminControllerTest {
     Claims claims = adminClaims("admin@test.com");
 
     AcademicTermForm form = new AcademicTermForm(2025, TermType.SPRING);
-    doNothing().when(academicTermService).createAcademicTerm(2025, TermType.SPRING);
+    doNothing().when(academicTermService).createAcademicTerm(2025, TermType.SPRING, auditContext);
 
     // When & Then
     mockMvc
@@ -223,7 +252,7 @@ class AdminControllerTest {
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isCreated());
 
-    verify(academicTermService).createAcademicTerm(2025, TermType.SPRING);
+    verify(academicTermService).createAcademicTerm(2025, TermType.SPRING, auditContext);
   }
 
   @Test
@@ -242,7 +271,8 @@ class AdminControllerTest {
                 .content(objectMapper.writeValueAsString(form)))
         .andExpect(status().isForbidden());
 
-    verify(academicTermService, never()).createAcademicTerm(any(), any());
+    verify(academicTermService, never()).createAcademicTerm(any(), any(), any());
+    verifyNoInteractions(auditContextResolver);
   }
 
   @Test
@@ -326,7 +356,7 @@ class AdminControllerTest {
     Claims claims = adminClaims("admin@test.com");
 
     Long termId = 1L;
-    doNothing().when(academicTermService).setCurrentTerm(termId);
+    doNothing().when(academicTermService).setCurrentTerm(termId, auditContext);
 
     // When & Then
     mockMvc
@@ -334,7 +364,7 @@ class AdminControllerTest {
             patch("/api/admin/academicTerm/{id}/current", termId).requestAttr("claims", claims))
         .andExpect(status().isOk());
 
-    verify(academicTermService).setCurrentTerm(termId);
+    verify(academicTermService).setCurrentTerm(termId, auditContext);
   }
 
   @Test
@@ -350,7 +380,8 @@ class AdminControllerTest {
             patch("/api/admin/academicTerm/{id}/current", termId).requestAttr("claims", claims))
         .andExpect(status().isForbidden());
 
-    verify(academicTermService, never()).setCurrentTerm(any());
+    verify(academicTermService, never()).setCurrentTerm(any(), any());
+    verifyNoInteractions(auditContextResolver);
   }
 
   @Test
@@ -369,6 +400,7 @@ class AdminControllerTest {
                 .content(invalidJson))
         .andExpect(status().isBadRequest());
 
-    verify(academicTermService, never()).createAcademicTerm(any(), any());
+    verify(academicTermService, never()).createAcademicTerm(any(), any(), any());
+    verifyNoInteractions(auditContextResolver);
   }
 }

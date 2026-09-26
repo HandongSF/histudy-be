@@ -21,6 +21,11 @@ public class StudyReportRepositoryImpl implements StudyReportRepository {
   }
 
   @Override
+  public boolean existsByStudyGroup(StudyGroup studyGroup) {
+    return repository.existsByStudyGroup(studyGroup);
+  }
+
+  @Override
   public Optional<StudyReport> findById(Long id) {
     return repository.findById(id);
   }

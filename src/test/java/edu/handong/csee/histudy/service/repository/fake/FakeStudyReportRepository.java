@@ -28,6 +28,11 @@ public class FakeStudyReportRepository implements StudyReportRepository {
   }
 
   @Override
+  public boolean existsByStudyGroup(StudyGroup studyGroup) {
+    return store.stream().anyMatch(report -> report.getStudyGroup().equals(studyGroup));
+  }
+
+  @Override
   public Optional<StudyReport> findById(Long id) {
     return store.stream().filter(report -> report.getStudyReportId().equals(id)).findFirst();
   }

@@ -9,6 +9,8 @@ import java.util.Optional;
 public interface StudyReportRepository {
   List<StudyReport> findAllByStudyGroupOrderByCreatedDateDesc(StudyGroup studyGroup);
 
+  boolean existsByStudyGroup(StudyGroup studyGroup);
+
   Optional<StudyReport> findById(Long id);
 
   void delete(StudyReport report);

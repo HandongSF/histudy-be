@@ -10,6 +10,8 @@ public interface CourseRepository {
 
   List<Course> findAllByAcademicTermIsCurrentTrue();
 
+  long countByAcademicTerm(AcademicTerm academicTerm);
+
   List<Course> saveAll(List<Course> entities);
 
   boolean existsById(Long id);

@@ -2,7 +2,11 @@ package edu.handong.csee.histudy.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import edu.handong.csee.histudy.repository.StudyApplicantRepository;
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
 import edu.handong.csee.histudy.domain.RequestStatus;
@@ -24,13 +28,19 @@ import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepo
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyGroupRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyReportRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeUserRepository;
+import edu.handong.csee.histudy.observability.audit.AuditContext;
 import java.util.List;
+import java.util.ArrayList;
+import edu.handong.csee.histudy.observability.audit.StudyApplicationAuditEvent;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Sort;
 
 class UserServiceTest {
+
+  private final AuditContext context = new AuditContext("request-application", 42L, Role.USER);
+  private final List<Object> auditEvents = new ArrayList<>();
 
   private final AcademicTerm currentTerm =
       AcademicTerm.builder().academicYear(2025).semester(TermType.SPRING).isCurrent(true).build();
@@ -133,6 +143,7 @@ class UserServiceTest {
 
   @BeforeEach
   void setUp() {
+    auditEvents.clear();
     userRepository = new FakeUserRepository();
     courseRepository = new FakeCourseRepository();
     studyGroupRepository = new FakeStudyGroupRepository();
@@ -146,7 +157,7 @@ class UserServiceTest {
             studyGroupRepository,
             academicTermRepository,
             studyApplicantRepository,
-            studyReportRepository);
+            studyReportRepository, auditEvents::add);
   }
 
   @Test
@@ -219,14 +230,14 @@ class UserServiceTest {
     userService.apply(
         new LegacyStudyApplicationCommand(
             List.of("22230001"), List.of(course.getCourseId())),
-        "partner@histudy.com");
+        "partner@histudy.com", context);
 
     // When
     ApplyFormDto result =
         userService.apply(
             new LegacyStudyApplicationCommand(
                 List.of("22230002"), List.of(course.getCourseId())),
-            "applicant@histudy.com");
+            "applicant@histudy.com", context);
 
     // Then
     StudyApplicant applicantForm =
@@ -257,13 +268,13 @@ class UserServiceTest {
     userService.apply(
         new LegacyStudyApplicationCommand(
             List.of("22230002"), List.of(firstCourse.getCourseId())),
-        "applicant@histudy.com");
+        "applicant@histudy.com", context);
 
     // When
     userService.apply(
         new LegacyStudyApplicationCommand(
             List.of("22230003"), List.of(secondCourse.getCourseId())),
-        "applicant@histudy.com");
+        "applicant@histudy.com", context);
 
     // Then
     StudyApplicant applicantForm =
@@ -293,7 +304,7 @@ class UserServiceTest {
                 userService.apply(
                     new LegacyStudyApplicationCommand(
                         List.of(), List.of(course.getCourseId())),
-                    "applicant@histudy.com"))
+                    "applicant@histudy.com", context))
         .isInstanceOf(IllegalStateException.class);
   }
 
@@ -305,7 +316,7 @@ class UserServiceTest {
         new LegacyStudyApplicationCommand(List.of(), List.of());
 
     // When Then
-    assertThatThrownBy(() -> userService.apply(command, "applicant@histudy.com"))
+    assertThatThrownBy(() -> userService.apply(command, "applicant@histudy.com", context))
         .isInstanceOf(NoCurrentTermFoundException.class);
   }
 
@@ -396,7 +407,7 @@ class UserServiceTest {
         StudyApplicant.of(currentTerm, applicant, List.of(), List.of(course)));
 
     // When
-    userService.deleteUserForm("22230001");
+    userService.deleteUserForm("22230001", context);
 
     // Then
     assertThat(studyApplicantRepository.findAllByTerm(currentTerm)).isEmpty();
@@ -449,7 +460,7 @@ class UserServiceTest {
     UserDto.UserEdit form = UserDto.UserEdit.builder().id(user.getUserId()).team(null).build();
 
     // When
-    userService.editUser(form);
+    userService.editUser(form, new AuditContext("request-edit", 42L, Role.ADMIN));
 
     // Then
     assertThat(applicant.getStudyGroup()).isNull();
@@ -471,10 +482,56 @@ class UserServiceTest {
     UserDto.UserEdit form = UserDto.UserEdit.builder().id(user.getUserId()).team(null).build();
 
     // When
-    userService.editUser(form);
+    userService.editUser(form, new AuditContext("request-edit", 42L, Role.ADMIN));
 
     // Then
     assertThat(applicant.getStudyGroup()).isNull();
     assertThat(studyGroupRepository.findById(group.getStudyGroupId())).isEmpty();
   }
+  @Test
+  void 신청변경의_문맥이_null이면_업무처리전에_거절한다() {
+    // given
+    LegacyStudyApplicationCommand command = new LegacyStudyApplicationCommand(List.of(), List.of());
+    // when then
+    assertThatThrownBy(() -> userService.apply(command, "private@example.com", null))
+        .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> userService.apply(List.of(), List.of(), "private@example.com", null))
+        .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> userService.deleteUserForm("private-sid", null))
+        .isInstanceOf(NullPointerException.class);
+    assertThat(auditEvents).isEmpty();
+  }
+
+  @Test
+  void V1저장소가_다른객체를_반환하면_저장된_ID로_감사이벤트를_발행한다() {
+    // given
+    academicTermRepository.save(currentTerm);
+    User user = userRepository.save(applicantUser);
+    Course course = courseRepository.saveAll(List.of(primaryCourse)).get(0);
+    StudyApplicant saved = studyApplicantRepository.save(
+        StudyApplicant.of(currentTerm, user, List.of(), List.of(course)));
+    StudyApplicantRepository repository = mock(StudyApplicantRepository.class);
+    when(repository.save(any(StudyApplicant.class))).thenAnswer(invocation -> {
+      StudyApplicant original = invocation.getArgument(0);
+      assertThat(original).isNotSameAs(saved);
+      assertThat(original.getStudyApplicantId()).isNull();
+      return saved;
+    });
+    UserService service = new UserService(userRepository, courseRepository, studyGroupRepository,
+        academicTermRepository, repository, studyReportRepository, auditEvents::add);
+
+    // when
+    ApplyFormDto response = service.apply(
+        new LegacyStudyApplicationCommand(List.of(), List.of(course.getCourseId())),
+        user.getEmail(), context);
+
+    // then
+    assertThat(response.getCourses()).hasSize(1);
+    assertThat(auditEvents).singleElement().satisfies(value -> {
+      StudyApplicationAuditEvent event = (StudyApplicationAuditEvent) value;
+      assertThat(event.applicationId()).isEqualTo(saved.getStudyApplicantId());
+      assertThat(event.preferredCourseCount()).isEqualTo(1);
+    });
+  }
+
 }
