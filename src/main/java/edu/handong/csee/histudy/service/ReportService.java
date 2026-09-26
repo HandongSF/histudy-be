@@ -1,6 +1,9 @@
 package edu.handong.csee.histudy.service;
 
 import edu.handong.csee.histudy.domain.*;
+import edu.handong.csee.histudy.observability.audit.*;
+import edu.handong.csee.histudy.observability.audit.ReportChangedEvent.Operation;
+import org.springframework.context.ApplicationEventPublisher;
 import edu.handong.csee.histudy.dto.ReportDto;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
 import edu.handong.csee.histudy.exception.UserNotFoundException;
@@ -26,8 +29,10 @@ public class ReportService {
   private final AcademicTermRepository academicTermRepository;
 
   private final ImagePathMapper imagePathMapper;
+  private final ApplicationEventPublisher publisher;
 
-  public ReportDto.ReportInfo createReport(ReportCommand command, String email) {
+  public ReportDto.ReportInfo createReport(ReportCommand command, String email, AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     User user = userRepository.findUserByEmail(email).orElseThrow(UserNotFoundException::new);
     AcademicTerm currentTerm =
         academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
@@ -61,6 +66,7 @@ public class ReportService {
             .build();
 
     StudyReport saved = studyReportRepository.save(report);
+    publisher.publishEvent(snapshot(saved, context, Operation.CREATED));
     Map<Long, String> imgFullPaths = imagePathMapper.parseImageToMapWithFullPath(saved.getImages());
     return new ReportDto.ReportInfo(saved, imgFullPaths);
   }
@@ -83,9 +89,11 @@ public class ReportService {
         .toList();
   }
 
-  public boolean updateReport(Long reportId, ReportCommand command, String email) {
+  public boolean updateReport(Long reportId, ReportCommand command, String email, AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     Optional<StudyReport> targetReportOr = findMemberReport(reportId, email);
     if (targetReportOr.isEmpty()) {
+      publisher.publishEvent(new ReportChangeRejectedEvent(context, Operation.UPDATED, reportId));
       return false;
     }
 
@@ -113,6 +121,7 @@ public class ReportService {
         imageFilenames,
         participants,
         courses);
+    publisher.publishEvent(snapshot(targetReport, context, Operation.UPDATED));
 
     return true;
   }
@@ -138,15 +147,26 @@ public class ReportService {
             });
   }
 
-  public boolean deleteReport(Long reportId, String email) {
+  public boolean deleteReport(Long reportId, String email, AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     Optional<StudyReport> reportOr = findMemberReport(reportId, email);
 
     if (reportOr.isEmpty()) {
+      publisher.publishEvent(new ReportChangeRejectedEvent(context, Operation.DELETED, reportId));
       return false;
     } else {
+      ReportChangedEvent event = snapshot(reportOr.get(), context, Operation.DELETED);
       studyReportRepository.delete(reportOr.get());
+      publisher.publishEvent(event);
       return true;
     }
+  }
+
+  private ReportChangedEvent snapshot(StudyReport report, AuditContext context, Operation operation) {
+    return new ReportChangedEvent(context, operation,
+        report.getStudyGroup().getAcademicTerm().getAcademicTermId(),
+        report.getStudyGroup().getStudyGroupId(), report.getStudyReportId(),
+        report.getParticipants().size(), report.getCourses().size(), report.getImages().size());
   }
 
   private Optional<StudyReport> findMemberReport(Long reportId, String email) {

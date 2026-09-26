@@ -85,3 +85,13 @@ actor_id=unknown으로 기존 매칭 동작을 유지하며 DB 조회 장애는 
 
 출력은 기존 콘솔·파일 로그를 사용합니다. 커밋 이후 출력이므로 DB와 감사 로그의 원자적
 영구 보존은 보장하지 않습니다.
+
+## 리포트 변경 감사 로그
+
+`report_created`, `report_updated`, `report_deleted`는 DB 커밋 이후 INFO로 한 건 기록한다.
+`request_id`, `actor_id`, `role`, `academic_term_id`, `group_id`, `report_id`, `result=success`,
+`participant_count`, `course_count`, `image_count`를 포함한다. 생성·수정은 변경 후 실제 연결 건수, 삭제는 삭제 전 건수를 뜻한다.
+수정·삭제 대상이 없거나 현재 그룹 소유가 아니면 즉시 같은 이벤트 이름에 `result=rejected reason_code=RESOURCE_UNAVAILABLE`을 기록한다.
+거절 로그는 요청한 `report_id`만 포함하고 타 그룹·학기·건수를 조회하거나 노출하지 않는다. 롤백에도 거절 시도 기록은 유지한다.
+성공은 외부 트랜잭션 롤백·flush 실패·트랜잭션 없는 발행에서는 기록되지 않는다. 이미지 파일 저장 자체는 이 이벤트의 범위가 아니다.
+이름·이메일·보고서 제목·본문·파일명·이미지 URL·참여자 목록은 이벤트와 로그에 포함하지 않는다.
