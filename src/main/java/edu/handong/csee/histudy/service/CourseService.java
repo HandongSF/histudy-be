@@ -10,33 +10,44 @@ import edu.handong.csee.histudy.exception.StudyGroupNotFoundException;
 import edu.handong.csee.histudy.exception.UserNotFoundException;
 import edu.handong.csee.histudy.repository.*;
 import edu.handong.csee.histudy.util.CourseCSV;
+import edu.handong.csee.histudy.observability.audit.*;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class CourseService {
+  private final ApplicationEventPublisher publisher;
   private final CourseRepository courseRepository;
   private final UserRepository userRepository;
   private final AcademicTermRepository academicTermRepository;
   private final StudyGroupRepository studyGroupRepository;
 
   @Transactional
-  public void replaceCourses(List<CourseCSV> courseData) {
+  public void replaceCourses(List<CourseCSV> courseData, AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     if (courseData.isEmpty()) {
+      publisher.publishEvent(new CoursesReplacedEvent(context, null, null, 0, false));
       return;
     }
     AcademicTerm currentTerm =
         academicTermRepository.findCurrentSemester().orElseThrow(NoCurrentTermFoundException::new);
     List<Course> courses = toCourses(courseData, currentTerm);
     if (courseRepository.hasReferences(currentTerm)) {
+      publisher.publishEvent(new CourseChangeRejectedEvent(context, currentTerm.getAcademicTermId(), null));
       throw new CourseInUseException();
     }
 
+    int previousCount = (int) courseRepository.findAllByAcademicTermIsCurrentTrue().stream()
+        .filter(course -> course.getAcademicTerm().getAcademicTermId().equals(currentTerm.getAcademicTermId()))
+        .count();
     courseRepository.deleteAllByAcademicTerm(currentTerm);
     courseRepository.saveAll(courses);
+    publisher.publishEvent(new CoursesReplacedEvent(context, currentTerm.getAcademicTermId(), previousCount, courses.size(), true));
   }
 
   private List<Course> toCourses(List<CourseCSV> courseData, AcademicTerm currentTerm) {
@@ -70,16 +81,23 @@ public class CourseService {
     return courses.stream().map(CourseDto.CourseInfo::new).toList();
   }
 
-  public int deleteCourse(CourseIdDto dto) {
+  @Transactional
+  public int deleteCourse(CourseIdDto dto, AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     if (courseRepository.existsById(dto.getId())) {
+      Long termId = courseRepository.findById(dto.getId()).map(Course::getAcademicTerm)
+          .map(AcademicTerm::getAcademicTermId).orElse(null);
       courseRepository.deleteById(dto.getId());
+      publisher.publishEvent(new CourseDeletedEvent(context, termId, dto.getId(), true, true));
       return 1;
     }
+    publisher.publishEvent(new CourseDeletedEvent(context, null, dto.getId(), false, true));
     return 0;
   }
 
   @Transactional
-  public void deleteCurrentCourse(Long courseId) {
+  public void deleteCurrentCourse(Long courseId, AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     Course course =
         courseRepository.findById(courseId).orElseThrow(CourseNotFoundException::new);
     if (course.getAcademicTerm() == null
@@ -87,8 +105,10 @@ public class CourseService {
       throw new CourseNotFoundException();
     }
     if (courseRepository.hasReferences(courseId)) {
+      publisher.publishEvent(new CourseChangeRejectedEvent(context, course.getAcademicTerm().getAcademicTermId(), courseId));
       throw new CourseInUseException();
     }
     courseRepository.deleteById(courseId);
+    publisher.publishEvent(new CourseDeletedEvent(context, course.getAcademicTerm().getAcademicTermId(), courseId, true, false));
   }
 }

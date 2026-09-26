@@ -12,8 +12,13 @@ import edu.handong.csee.histudy.exception.MissingParameterException;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import edu.handong.csee.histudy.observability.audit.*;
+import edu.handong.csee.histudy.domain.Role;
+import java.util.ArrayList;
 
 class AcademicTermServiceTest {
+  private final AuditContext context = new AuditContext("request", 42L, Role.ADMIN);
+  private final java.util.List<Object> events = new ArrayList<>();
 
   private final AcademicTerm spring2024Term =
       AcademicTerm.builder().academicYear(2024).semester(TermType.SPRING).isCurrent(false).build();
@@ -28,7 +33,7 @@ class AcademicTermServiceTest {
   @BeforeEach
   void setUp() {
     academicTermRepository = new FakeAcademicTermRepository();
-    academicTermService = new AcademicTermService(academicTermRepository);
+    academicTermService = new AcademicTermService(academicTermRepository, events::add);
   }
 
   @Test
@@ -55,9 +60,10 @@ class AcademicTermServiceTest {
     AcademicTerm existingCurrent = academicTermRepository.save(spring2025CurrentTerm);
 
     // When
-    academicTermService.createAcademicTerm(2025, TermType.FALL);
+    academicTermService.createAcademicTerm(2025, TermType.FALL, context);
 
     // Then
+    assertThat(events).singleElement().isInstanceOf(AcademicTermCreatedEvent.class);
     assertThat(academicTermRepository.findAll()).hasSize(2);
     assertThat(academicTermRepository.findCurrentSemester()).contains(existingCurrent);
     assertThat(
@@ -74,7 +80,7 @@ class AcademicTermServiceTest {
     academicTermRepository.save(fall2025Term);
 
     // When Then
-    assertThatThrownBy(() -> academicTermService.createAcademicTerm(2025, TermType.FALL))
+    assertThatThrownBy(() -> academicTermService.createAcademicTerm(2025, TermType.FALL, context))
         .isInstanceOf(DuplicateAcademicTermException.class);
   }
 
@@ -86,9 +92,9 @@ class AcademicTermServiceTest {
 
     // When Then
     assertThatThrownBy(
-            () -> academicTermService.createAcademicTerm(missingYear, TermType.FALL))
+            () -> academicTermService.createAcademicTerm(missingYear, TermType.FALL, context))
         .isInstanceOf(MissingParameterException.class);
-    assertThatThrownBy(() -> academicTermService.createAcademicTerm(2025, missingSemester))
+    assertThatThrownBy(() -> academicTermService.createAcademicTerm(2025, missingSemester, context))
         .isInstanceOf(MissingParameterException.class);
   }
 
@@ -99,9 +105,10 @@ class AcademicTermServiceTest {
     AcademicTerm fall = academicTermRepository.save(fall2025Term);
 
     // When
-    academicTermService.setCurrentTerm(fall.getAcademicTermId());
+    academicTermService.setCurrentTerm(fall.getAcademicTermId(), context);
 
     // Then
+    assertThat(events).containsExactly(new CurrentTermChangedEvent(context, spring.getAcademicTermId(), fall.getAcademicTermId(), true));
     assertThat(spring.getIsCurrent()).isFalse();
     assertThat(fall.getIsCurrent()).isTrue();
     assertThat(academicTermRepository.findCurrentSemester()).contains(fall);
@@ -113,7 +120,16 @@ class AcademicTermServiceTest {
     Long missingId = 999L;
 
     // When Then
-    assertThatThrownBy(() -> academicTermService.setCurrentTerm(missingId))
+    assertThatThrownBy(() -> academicTermService.setCurrentTerm(missingId, context))
         .isInstanceOf(AcademicTermNotFoundException.class);
+  }
+  @Test
+  void 감사문맥없이_학기를_추가하면_변경전에_실패한다() {
+    // given
+    // when then
+    assertThatThrownBy(() -> academicTermService.createAcademicTerm(2030, TermType.FALL, null))
+        .isInstanceOf(NullPointerException.class);
+    assertThat(academicTermRepository.findAll()).isEmpty();
+    assertThat(events).isEmpty();
   }
 }

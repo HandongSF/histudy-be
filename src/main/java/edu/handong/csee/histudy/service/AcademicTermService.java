@@ -9,8 +9,11 @@ import edu.handong.csee.histudy.exception.AcademicTermNotFoundException;
 import edu.handong.csee.histudy.exception.DuplicateAcademicTermException;
 import edu.handong.csee.histudy.exception.MissingParameterException;
 import edu.handong.csee.histudy.repository.AcademicTermRepository;
+import edu.handong.csee.histudy.observability.audit.*;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,9 +25,11 @@ public class AcademicTermService {
       "연도와 학기는 필수 입력값입니다.";
 
   private final AcademicTermRepository academicTermRepository;
+  private final ApplicationEventPublisher publisher;
 
   @Transactional
-  public void createAcademicTerm(Integer year, TermType semester) {
+  public void createAcademicTerm(Integer year, TermType semester, AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     if (year == null || semester == null) {
       throw new MissingParameterException(MESSAGE_MISSING_ACADEMIC_TERM);
     }
@@ -43,7 +48,8 @@ public class AcademicTermService {
             .isCurrent(false)
             .build();
 
-    academicTermRepository.save(academicTerm);
+    AcademicTerm saved = academicTermRepository.save(academicTerm);
+    publisher.publishEvent(new AcademicTermCreatedEvent(context, saved.getAcademicTermId()));
   }
 
   @Transactional(readOnly = true)
@@ -64,14 +70,21 @@ public class AcademicTermService {
   }
 
   @Transactional
-  public void setCurrentTerm(Long id) {
+  public void setCurrentTerm(Long id, AuditContext context) {
+    Objects.requireNonNull(context, "context must not be null");
     AcademicTerm targetTerm =
         academicTermRepository.findById(id).orElseThrow(AcademicTermNotFoundException::new);
 
     if (targetTerm.getIsCurrent()) {
+      publisher.publishEvent(new CurrentTermChangedEvent(context, id, id, false));
       return;
     }
-    academicTermRepository.findCurrentSemester().ifPresent(term -> term.setCurrent(false));
+    AcademicTerm previous = academicTermRepository.findCurrentSemester().orElse(null);
+    Long previousId = previous == null ? null : previous.getAcademicTermId();
+    if (previous != null) {
+      previous.setCurrent(false);
+    }
     targetTerm.setCurrent(true);
+    publisher.publishEvent(new CurrentTermChangedEvent(context, previousId, id, true));
   }
 }
