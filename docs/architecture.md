@@ -114,3 +114,12 @@
 - `support`: 공통 테스트 헬퍼
 
 `perf` 태그가 붙은 테스트는 매칭 성능 검증용이며 기본 `test` 작업에서는 제외됩니다.
+
+### 매칭 감사 이벤트
+
+관리자 매칭 진입점은 권한 확인 후 `AuditContextResolver`로 요청 ID와 내부 행위자 ID를
+확보해 `MatchingApplicationService.match(AuditContext)`에 전달합니다. 애플리케이션 서비스는
+매칭 결과를 ID·집계값만 가진 `MatchingExecutedEvent`로 발행하며,
+`observability.audit.MatchingAuditListener`가 트랜잭션 커밋 이후 출력합니다.
+도메인 매칭 정책은 감사·웹 계층에 의존하지 않습니다. 필드와 기록 시점은
+`docs/logging.md`의 매칭 실행 감사 로그 계약을 따릅니다.

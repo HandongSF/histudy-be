@@ -2,6 +2,8 @@ package edu.handong.csee.histudy.matching.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 import edu.handong.csee.histudy.domain.AcademicTerm;
 import edu.handong.csee.histudy.domain.Course;
@@ -12,6 +14,9 @@ import edu.handong.csee.histudy.domain.StudyPartnerRequest;
 import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.domain.User;
 import edu.handong.csee.histudy.exception.NoCurrentTermFoundException;
+import edu.handong.csee.histudy.observability.audit.AuditContext;
+import edu.handong.csee.histudy.observability.audit.MatchingExecutedEvent;
+import edu.handong.csee.histudy.repository.StudyGroupRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeAcademicTermRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyApplicationRepository;
 import edu.handong.csee.histudy.service.repository.fake.FakeStudyGroupRepository;
@@ -23,6 +28,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 class MatchingApplicationServiceTest {
 
+  private final AuditContext context = new AuditContext("request-match", 42L, Role.ADMIN);
+  private final List<MatchingExecutedEvent> events = new ArrayList<>();
   private final AcademicTerm currentTerm =
       AcademicTerm.builder().academicYear(2025).semester(TermType.SPRING).isCurrent(true).build();
   private final Course primaryCourse = createCourse(1L, "자료구조");
@@ -35,12 +42,14 @@ class MatchingApplicationServiceTest {
 
   @BeforeEach
   void setUp() {
+    events.clear();
     academicTermRepository = new FakeAcademicTermRepository();
     studyApplicantRepository = new FakeStudyApplicationRepository();
     studyGroupRepository = new FakeStudyGroupRepository();
     matchingApplicationService =
         new MatchingApplicationService(
-            academicTermRepository, studyApplicantRepository, studyGroupRepository);
+            academicTermRepository, studyApplicantRepository, studyGroupRepository,
+            event -> events.add((MatchingExecutedEvent) event));
   }
 
   @Test
@@ -71,13 +80,24 @@ class MatchingApplicationServiceTest {
     studyApplicantRepository.saveAll(applicants);
 
     // When
-    matchingApplicationService.match();
+    matchingApplicationService.match(context);
 
     // Then
     List<StudyGroup> groups = studyGroupRepository.findAllByAcademicTerm(currentTerm);
     assertThat(groups).extracting(StudyGroup::getTag).containsExactly(1, 2);
     assertThat(groups).extracting(group -> group.getMembers().size()).containsExactly(2, 3);
     assertThat(leftoverApplicants).allMatch(applicant -> !applicant.hasStudyGroup());
+    assertThat(events).singleElement().satisfies(event -> {
+      assertThat(event.context()).isEqualTo(context);
+      assertThat(event.academicTermId()).isEqualTo(currentTerm.getAcademicTermId());
+      assertThat(event.applicantCount()).isEqualTo(7);
+      assertThat(event.assignedCount()).isEqualTo(5);
+      assertThat(event.remainingCount()).isEqualTo(2);
+      assertThat(event.createdGroupCount()).isEqualTo(2);
+      assertThat(event.result()).isEqualTo("success");
+      assertThat(event.reasonCode()).isNull();
+      assertThat(event.durationMs()).isNotNegative();
+    });
   }
 
   @Test
@@ -96,12 +116,17 @@ class MatchingApplicationServiceTest {
     studyApplicantRepository.saveAll(newApplicants);
 
     // When
-    matchingApplicationService.match();
+    matchingApplicationService.match(context);
 
     // Then
     assertThat(studyGroupRepository.findAllByAcademicTerm(currentTerm))
         .extracting(StudyGroup::getTag)
         .containsExactly(7, 8);
+    assertThat(events).singleElement().satisfies(event -> {
+      assertThat(event.applicantCount()).isEqualTo(3);
+      assertThat(event.assignedCount()).isEqualTo(3);
+      assertThat(event.createdGroupCount()).isEqualTo(1);
+    });
   }
 
   @Test
@@ -109,8 +134,75 @@ class MatchingApplicationServiceTest {
     // Given
 
     // When Then
-    assertThatThrownBy(matchingApplicationService::match)
+    assertThatThrownBy(() -> matchingApplicationService.match(context))
         .isInstanceOf(NoCurrentTermFoundException.class);
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void 신청자가_없으면_변경없음_이벤트를_발행한다() {
+    // given
+    academicTermRepository.save(currentTerm);
+    // when
+    matchingApplicationService.match(context);
+    // then
+    assertThat(events).singleElement().satisfies(event -> {
+      assertThat(event.result()).isEqualTo("no_op");
+      assertThat(event.reasonCode()).isEqualTo("NO_UNASSIGNED_APPLICANTS");
+      assertThat(event.applicantCount()).isZero();
+      assertThat(event.assignedCount()).isZero();
+      assertThat(event.remainingCount()).isZero();
+      assertThat(event.createdGroupCount()).isZero();
+    });
+  }
+
+  @Test
+  void 그룹구성이_불가능하면_미배정인원과_사유를_기록한다() {
+    // given
+    academicTermRepository.save(currentTerm);
+    studyApplicantRepository.saveAll(List.of(createApplicant(1, primaryCourse), createApplicant(2, primaryCourse)));
+    // when
+    matchingApplicationService.match(context);
+    // then
+    assertThat(events).singleElement().satisfies(event -> {
+      assertThat(event.result()).isEqualTo("no_op");
+      assertThat(event.reasonCode()).isEqualTo("NO_ELIGIBLE_GROUPS");
+      assertThat(event.applicantCount()).isEqualTo(2);
+      assertThat(event.remainingCount()).isEqualTo(2);
+      assertThat(event.assignedCount()).isZero();
+      assertThat(event.createdGroupCount()).isZero();
+    });
+  }
+
+  @Test
+  void 그룹저장이_실패하면_완료이벤트를_발행하지_않는다() {
+    // given
+    academicTermRepository.save(currentTerm);
+    studyApplicantRepository.saveAll(List.of(
+        createApplicant(1, primaryCourse), createApplicant(2, primaryCourse),
+        createApplicant(3, primaryCourse)));
+    StudyGroupRepository failingRepository = mock(StudyGroupRepository.class);
+    RuntimeException failure = new IllegalStateException("save failed");
+    when(failingRepository.saveAll(any())).thenThrow(failure);
+    MatchingApplicationService service = new MatchingApplicationService(
+        academicTermRepository, studyApplicantRepository, failingRepository,
+        event -> events.add((MatchingExecutedEvent) event));
+    // when then
+    assertThatThrownBy(() -> service.match(context)).isSameAs(failure);
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void 문맥이_null이면_매칭_조회전에_거절한다() {
+    // given
+    var terms = mock(edu.handong.csee.histudy.repository.AcademicTermRepository.class);
+    var applicants = mock(edu.handong.csee.histudy.repository.StudyApplicantRepository.class);
+    var groups = mock(StudyGroupRepository.class);
+    var publisher = mock(org.springframework.context.ApplicationEventPublisher.class);
+    var service = new MatchingApplicationService(terms, applicants, groups, publisher);
+    // when then
+    assertThatThrownBy(() -> service.match(null)).isInstanceOf(NullPointerException.class);
+    verifyNoInteractions(terms, applicants, groups, publisher);
   }
 
   private StudyApplicant createApplicant(int sequence, Course course) {

@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.handong.csee.histudy.controller.form.AcademicTermForm;
+import edu.handong.csee.histudy.domain.Role;
 import edu.handong.csee.histudy.domain.TermType;
 import edu.handong.csee.histudy.dto.AcademicTermDto;
 import edu.handong.csee.histudy.dto.TeamDto;
@@ -17,6 +18,8 @@ import edu.handong.csee.histudy.dto.TeamReportDto;
 import edu.handong.csee.histudy.dto.UserDto;
 import edu.handong.csee.histudy.interceptor.AuthenticationInterceptor;
 import edu.handong.csee.histudy.matching.application.MatchingApplicationService;
+import edu.handong.csee.histudy.observability.audit.AuditContext;
+import edu.handong.csee.histudy.observability.audit.AuditContextResolver;
 import edu.handong.csee.histudy.service.AcademicTermService;
 import edu.handong.csee.histudy.service.DiscordService;
 import edu.handong.csee.histudy.service.JwtService;
@@ -48,6 +51,8 @@ class AdminControllerTest {
 
   @MockitoBean private MatchingApplicationService matchingApplicationService;
 
+  @MockitoBean private AuditContextResolver auditContextResolver;
+
   @MockitoBean private UserService userService;
 
   @MockitoBean private AcademicTermService academicTermService;
@@ -66,7 +71,7 @@ class AdminControllerTest {
                     teamService,
                     userService,
                     academicTermService,
-                    matchingApplicationService))
+                    matchingApplicationService, auditContextResolver))
             .setControllerAdvice(new ExceptionController(discordService))
             .addInterceptors(authenticationInterceptor)
             .build();
@@ -115,13 +120,15 @@ class AdminControllerTest {
   void 관리자가_그룹매칭실행시_성공() throws Exception {
     Claims claims = adminClaims("admin@test.com");
 
-    doNothing().when(matchingApplicationService).match();
+    AuditContext context = new AuditContext("request-admin", 42L, Role.ADMIN);
+    when(auditContextResolver.resolve("admin@test.com", Role.ADMIN)).thenReturn(context);
 
     mockMvc
         .perform(post("/api/admin/team-match").requestAttr("claims", claims))
         .andExpect(status().isCreated());
 
-    verify(matchingApplicationService).match();
+    verify(matchingApplicationService).match(context);
+    verify(auditContextResolver).resolve("admin@test.com", Role.ADMIN);
   }
 
   @Test
@@ -134,7 +141,7 @@ class AdminControllerTest {
         .perform(post("/api/admin/team-match").requestAttr("claims", claims))
         .andExpect(status().isForbidden());
 
-    verifyNoInteractions(matchingApplicationService);
+    verifyNoInteractions(matchingApplicationService, auditContextResolver);
   }
 
   @Test
