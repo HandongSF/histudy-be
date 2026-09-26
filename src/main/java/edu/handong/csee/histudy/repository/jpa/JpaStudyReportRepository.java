@@ -12,6 +12,8 @@ public interface JpaStudyReportRepository extends JpaRepository<StudyReport, Lon
 
   List<StudyReport> findAllByStudyGroupOrderByCreatedDateDesc(StudyGroup studyGroup);
 
+  boolean existsByStudyGroup(StudyGroup studyGroup);
+
   long countByStudyGroupAcademicTerm(AcademicTerm academicTerm);
 
   @Query("select coalesce(sum(r.totalMinutes), 0) from StudyReport r")
